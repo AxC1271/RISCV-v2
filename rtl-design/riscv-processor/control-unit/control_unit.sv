@@ -129,6 +129,4 @@ module control_unit (
             end
         endcase
     end
-
-
 endmodule

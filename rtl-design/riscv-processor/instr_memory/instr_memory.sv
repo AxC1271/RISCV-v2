@@ -19,6 +19,24 @@ module instr_memory # (
     // pointer to keep track of writes
     logic[9:0] instr_ptr := 0;
 
+    // this instr_memory will come preloaded with a Fibonacci sequence code
+    // the hexadecimals were derived from the RISCV-CPU Git repository
+    initial begin
+        mem[0] <= 32'h00000093; // addi x1, x0, 0
+        mem[1] <= 32'h00100113; // addi x2, x0, 1
+        mem[2] <= 32'h00000213; // addi x4, x0, 0
+        mem[3] <= 32'h00B00293; // addi x5, x0, 11
+        mem[4] <= 32'h00520763; // beq x4, x5, 7
+        mem[5] <= 32'h002081B3; // add x3, x1, x2
+        mem[6] <= 32'h00010093; // addi x1, x2, 0
+        mem[7] <= 32'h00018113; // addi x2, x3, 0
+        mem[8] <= 32'h0001807F; // prnt x3
+        mem[9] <= 32'h00120213; // addi x4, x4, 1
+        mem[10] <= 32'hFE000AE3; // beq x0, x0, -6
+        mem[11] <= 32'h0001807F; // prnt x3
+        mem[12] <= 32'hFE000FE3; // beq x0, x0, -1
+    end
+
     // write from bootloader, handles reset here
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
