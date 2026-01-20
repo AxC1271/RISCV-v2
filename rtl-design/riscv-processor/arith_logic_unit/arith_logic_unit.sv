@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-module alu (
+module arith_logic_unit (
     input logic[31:0] a,
     input logic[31:0] b,
     input logic[2:0] opcode,
