@@ -24,7 +24,9 @@ module register_file (
     // write process should be clocked
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-
+            for (int i = 0; i < 32; i++) begin
+                mem[i] <= 32'h0;
+            end
         end else begin
             if (wr_en && wr_addr != ZERO_REG) begin
                 mem[wr_addr] <= wr_data;
