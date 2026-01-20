@@ -6,5 +6,7 @@
 
 ### Harvard Architecture
 
+### Cache Architecture (Direct Mapped Caches)
+
 ## Verification (UVM)
 
