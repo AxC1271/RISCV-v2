@@ -27,15 +27,12 @@ module async_fifo # (
     logic [6:0] wr_ptr_gray, wr_ptr_gray1, wr_ptr_gray2;
 
     // assign gray code values and flags
-    always_comb @(*) begin
-        // gray code converters
-        rd_ptr_gray <= rd_ptr_bin ^ (rd_ptr_bin >> 1);
-        wr_ptr_gray <= wr_ptr_bin ^ (wr_ptr_bin >> 1);
+    assign rd_ptr_gray = rd_ptr_bin ^ (rd_ptr_bin >> 1);
+    assign wr_ptr_gray = wr_ptr_bin ^ (wr_ptr_bin >> 1);
 
-        // assert almost empty and full statuses
-        empty <= (rd_ptr_gray == wr_ptr_gray2);
-        full <= (wr_ptr_gray == {~rd_ptr_gray2[6:5], rd_ptr_gray2[4:0]}); 
-    end
+    // assert almost empty and full statuses
+    assign empty <= (rd_ptr_gray == wr_ptr_gray2);
+    assign full <= (wr_ptr_gray == {~rd_ptr_gray2[6:5], rd_ptr_gray2[4:0]}); 
 
     // synchronize the read gray codes to the write domain
     always_ff @(posedge clk_w or negedge rst_n_w) begin
