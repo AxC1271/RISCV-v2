@@ -1,115 +1,128 @@
 `timescale 1ns / 1ps
 
-module uart_rx # (
+module uart_rx #(
     parameter BAUD_RATE = 115200,
-    parameter DATA_WIDTH = 8
+    parameter DATA_WIDTH = 8,
+    parameter CLK_FREQ = 100_000_000
 ) (
-    input logic clk,
-    input logic rst_n,
-
-    // read serially from COM
-    input logic rx,
-    // write to asynchronous FIFO
-    output logic[DATA_WIDTH-1:0] rx_data,
+    input  logic clk,
+    input  logic rst_n,
+    input  logic rx,
+    output logic [DATA_WIDTH-1:0] rx_data,
     output logic wr
 );
 
+    // calculate clock divider values
+    localparam int CLKS_PER_BIT = CLK_FREQ / BAUD_RATE;
+    localparam int CLKS_PER_HALF_BIT = CLKS_PER_BIT / 2;
+    
+    typedef enum logic [2:0] {
+        IDLE  = 3'b000,
+        START = 3'b001,
+        DATA  = 3'b010,
+        STOP  = 3'b011
+    } rx_state_t;
+
+    rx_state_t state, next_state;
+    
+    logic [15:0] clk_count;
+    logic [2:0] bit_index;
     logic [DATA_WIDTH-1:0] rx_data_reg;
-    typedef enum logic [1:0] {
-        IDLE,
-        START,
-        DATA,
-        STOP
-    } rx_state;
-
-    rx_state curr;
-    logic baud_clk;
-    logic baud_clk_x16;
-
-    // define some local parameters 
-    localparam int clk_max = (100_000_000) / (BAUD_RATE * 2);
-    localparam int clk_max_x16 = clk_max >> 5;
-    localparam int clk_count_x16 = 0;
-    localparam int clk_count = 0;
-    localparam int start_count = 0;
-    localparam int data_count = 0;
-
-    initial begin
-        baud_clk <= 0;
-        baud_clk_x16 <= 0;
-        curr <= IDLE;
-    end
-
-    // create some clock divider module here
-    // this clock signal will be used for our 
-    // reads with the external transmitter
+    
+    // use a double flop to synchronize data
+    logic rx_sync1, rx_sync2;
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            baud_clk <= 1'b0;
+            rx_sync1 <= 1'b1;
+            rx_sync2 <= 1'b1;
+        end else begin
+            rx_sync1 <= rx;
+            rx_sync2 <= rx_sync1;
+        end
+    end
+    
+    // state register
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
+            state <= IDLE;
+        else
+            state <= next_state;
+    end
+    
+    // logic for fsm
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
             clk_count <= 0;
+            bit_index <= 0;
+            rx_data_reg <= 0;
+            rx_data <= 0;
+            wr <= 1'b0;
         end else begin
-            if (clk_count == clk_max) begin
-                baud_clk <= ~baud_clk;
-                clk_count <= 0;
-            end else begin
-                clk_count <= clk_count + 1;
-            end
-        end
-    end
-
-    // we will create a separate clock divider
-    // to verify that rx gets held low on an 
-    // actual acknowledge signal instead of 
-    // jitters/glitch signals so we have clk_count_x16
-    always_ff @(posedge clk) begin
-        if (clk_count_x16 == clk_max_x16) begin
-            baud_clk_x16 <= ~baud_clk_x16;
-        end else begin
-            clk_count_x16 <= clk_count_x16 + 1;
-        end
-    end
-
-    // handle state machine transition here
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            rx_data_reg <= 8'b00000000;
-            curr <= IDLE;
-        end else begin
-            case (curr)
+            wr <= 1'b0;  // default: don't write
+            
+            case (state)
                 IDLE: begin
-                    // check if the rx line gets 
-                    // de-asserted, else stay IDLE
-                    if (!rx) begin
-                        curr <= START;
+                    clk_count <= 0;
+                    bit_index <= 0;
+                    if (!rx_sync2) begin  // detected start bit (falling edge)
+                        next_state <= START;
+                    end else begin
+                        next_state <= IDLE;
                     end
                 end
+                
                 START: begin
-                    // we will use the 16x generated clock signal
-                    // we sample 16 times and check that the rx
-                    // signal has been held low for at least half
-                    // of the baud clock cycle, or 8 iterations
-                    if (start_count == 8) begin
-                        curr <= DATA;
-                    end else (posedge baud_clk_x16) begin
-                    end
-                end
-                DATA: begin
-                    if (posedge baud_clk) begin
-                        if (data_count == 8) begin
-                            curr <= STOP;
+                    // wait until middle of start bit to verify it's still low
+                    if (clk_count < CLKS_PER_HALF_BIT - 1) begin
+                        clk_count <= clk_count + 1;
+                        next_state <= START;
+                    end else begin
+                        clk_count <= 0;
+                        if (!rx_sync2) begin
+                            next_state <= DATA;  // valid start bit
                         end else begin
-                            rx_data_reg[data_count] = rx;
-                            data_count = data_count + 1;
+                            next_state <= IDLE;  // false start (glitch)
                         end
                     end
                 end
-                STOP: begin
-                    rx_data <= rx_data_reg;
-                    curr <= IDLE;
+                
+                DATA: begin
+                    if (clk_count < CLKS_PER_BIT - 1) begin
+                        clk_count <= clk_count + 1;
+                        next_state <= DATA;
+                    end else begin
+                        clk_count <= 0;
+                        rx_data_reg[bit_index] <= rx_sync2;  // sample at bit center
+                        
+                        if (bit_index < DATA_WIDTH - 1) begin
+                            bit_index <= bit_index + 1;
+                            next_state <= DATA;
+                        end else begin
+                            bit_index <= 0;
+                            next_state <= STOP;
+                        end
+                    end
                 end
+                
+                STOP: begin
+                    if (clk_count < CLKS_PER_BIT - 1) begin
+                        clk_count <= clk_count + 1;
+                        next_state <= STOP;
+                    end else begin
+                        clk_count <= 0;
+                        if (rx_sync2) begin  // valid stop bit (should be high)
+                            rx_data <= rx_data_reg;
+                            wr <= 1'b1;
+                            next_state <= IDLE;
+                        end else begin
+                            next_state <= IDLE;
+                        end
+                    end
+                end
+                
+                default: next_state <= IDLE;
             endcase
         end
     end
 
-
-endmodule;
+endmodule

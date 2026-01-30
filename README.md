@@ -16,11 +16,12 @@ Recall that the standard Harvard architecture looks like the above diagram. This
 
 ### Peripherals + Memory Mapped I/O
 
-
+To make the core more interesting, I wanted to add the possibility of writing instructinos serially to it via UART, and I also want the PMOD ports to be usable for interfacing with any external device.
 
 ### Cache Architecture 
 
 For the specific I-caches and D-caches in this processor, I will be implementing a direct-mapped cache hierarchy with a writeback policy. 
+
 
 ---
 
