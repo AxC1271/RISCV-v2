@@ -2,7 +2,7 @@
 
 // this is just the RISC-V core,
 // not the entire integrated system
-module riscv_processor (
+module core_riscv (
     input logic clk,
     input logic rst_n,
     input logic rx,
