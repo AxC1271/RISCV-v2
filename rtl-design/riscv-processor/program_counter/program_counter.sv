@@ -9,6 +9,7 @@ module program_counter (
     // is removed from the program counter
     // the instruction reset will be handled
     // in the top module
+        
     always_ff @(posedge clk) begin
         pc_out <= pc_in;
     end
