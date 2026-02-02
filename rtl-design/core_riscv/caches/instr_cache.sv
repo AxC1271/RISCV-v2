@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 
 // this will be a 1kB cache
-module instr_cache #(
+module instr_cache # (
     parameter DEPTH = 256
 )(
     input logic clk,

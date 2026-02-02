@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-module uart_rx #(
+module uart_rx # (
     parameter BAUD_RATE = 115200,
     parameter DATA_WIDTH = 8,
     parameter CLK_FREQ = 100_000_000

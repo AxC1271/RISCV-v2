@@ -11,6 +11,13 @@
 
 The asynchronous FIFO is one of the most common interview points when it comes to RTL design. When you do communication across multiple systems with different independent clocks, it is necessary to understand how to handle data transfers safely through clock domain crossings.
 
+Signal Specifications:
+* `clk_w`, `clk_r`: read and write clock signals for dual port access
+* `rst_n_w`, `rst_n_r`: active low resets for both reads and writes
+* `wr_en`, `rd_en`: enable pins
+* `wr_data`, `rd_data`: write and read data
+* `empty`, `full`: status flags
+
 ---
 
 ## RTL Code
