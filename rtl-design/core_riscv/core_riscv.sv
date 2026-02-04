@@ -3,9 +3,16 @@
 // this is just the RISC-V core,
 // not the entire integrated system
 module core_riscv (
+    // top level signals
     input logic clk,
     input logic rst_n,
-    input logic rx,
+
+    // write port to the instr_memory
+    input logic[31:0] instr,
+    input logic instrmem_write,
+
+    // define external ports for 
+    // memory mapped I/O later
 );
 
 // instantiate necessary signals here
@@ -26,11 +33,11 @@ module core_riscv (
     logic ALUCont,
     logic JMP
 
-    // pipelining registers
 
 // instantiate modules here
     program_counter pc (
         .clk(clk),
+        .rst_n(rst_n)
         .pc_in(pc_in),
         .pc_out(pc_out)
     );
@@ -44,6 +51,19 @@ module core_riscv (
         // pass in pc pointer
         .pc_in(pc_out),
         .instr(curr_instr)
+    );
+
+    instr_cache instr_cache (
+        .clk(clk),
+        .rst_(rst_n),
+        .cpu_addr(),
+        .cpu_req(),
+        .cpu_rdata(),
+        .cpu_ready(),
+        .mem_addr(),
+        .mem_req(),
+        .mem_rdata(),
+        .mem_ready()
     );
 
     register_file rf (
@@ -83,6 +103,30 @@ module core_riscv (
         .opcode(),
         .res(),
         .zero_flag()
+    );
+
+    data_memory dm (
+        .clk(clk),
+        .rst_n(rst_n),
+        .mem_addr(),
+        .wr_data()
+    );
+
+    data_cache data_cache (
+        .clk(clk),
+        .rst_n(rst_n),
+        .addr(),
+        .wr_data(),
+        .rd_en(),
+        .wr_en(),
+        .rd_data(),
+        .ready(),
+        .mem_addr(),
+        .mem_wr_data(),
+        .mem_rd_en(),
+        .mem_wr_en(),
+        .mem_rd_data(),
+        .mem_ready()
     );
 
 // instantiate processes here
