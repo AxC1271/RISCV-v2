@@ -22,7 +22,7 @@ To make the core more interesting, I wanted to add the possibility of writing in
 
 ### Cache Architecture 
 
-For the specific I-caches and D-caches in this processor, I will be implementing a direct-mapped cache hierarchy with a writeback policy for the I-cache due to its sequential nature. As for the D-cache, I chose to implement it using a 2-way set associative cache architecture with an LRU policy. 
+For the specific I-caches and D-caches in this processor, I will be implementing a direct-mapped cache hierarchy with a writeback policy for the I-cache due to its sequential nature. As for the D-cache, I chose to implement it using a 2-way set associative cache architecture with an LRU policy. As for why I decided to use those, you can check the `rtl-design/core_riscv/caches` directory for the technical explanation.
 
 
 ---
@@ -34,6 +34,18 @@ This project will be tested under UVM as two different systems: the RISC-V stand
 ### RISC-V Core
 
 ### Bootloader
+
+---
+
+## Credits + References
+
+### Diagrams and Figures
+
+- **Harvard Architecture Overview**: Based on the classic 5-stage RISC pipeline diagram from Patterson, D.A. and Hennessy, J.L. (2017). 
+  
+- **Cache Associativity Diagrams**: 
+  [CS Illustrated](https://csillustrated.berkeley.edu/PDFs/handouts/cache-3-associativity-handout.pdf), 
+  UC Berkeley EECS Department
 
 ---
 

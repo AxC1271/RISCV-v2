@@ -1,5 +1,15 @@
 # Caches
 
+<p align="center">
+    <img 
+    src="../../../images/cache-explanation.png" 
+    width=500px
+    />
+</p>
+
+*Image source: [CS Illustrated: Cache Associativity](https://csillustrated.berkeley.edu/PDFs/handouts/cache-3-associativity-handout.pdf), UC Berkeley Computer Science Department*
+
+
 ## Purpose
 
 Caches act as fast memory access for the CPU, lowering CPI and increasing overall CPU performance. For the purposes of this single core processor with external peripherals, I implemented two separate L1 caches for the instruction memory and data memory modules.
