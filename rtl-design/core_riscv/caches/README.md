@@ -6,15 +6,13 @@ Caches act as fast memory access for the CPU, lowering CPI and increasing overal
 
 ### Different Cache Archetypes
 
-* Direct Mapped Cache
+* Direct Mapped Cache (1-way Set Associative)
 <p align="center">
     <img 
     src="../../../images/dmc-diagram.png" 
     width=500px
     />
 </p>
-
-Direct mapped caches are 
 
 * N-way Set Associative
 
