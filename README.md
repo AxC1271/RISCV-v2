@@ -8,6 +8,8 @@
     <img src="./images/riscv-architecture.png" />
 </p>
 
+*Credit: Patterson & Hennessy, [Computer Organization and Design: RISC-V Edition](https://www.elsevier.com/books/computer-organization-and-design-risc-v-edition/patterson/978-0-12-812275-4)*
+
 Recall that the standard Harvard architecture looks like the above diagram. This is the model that we will follow for my **RISCV-v2 processor**, albeit with a few differences. For the previous rendition, it lacked multi-stage pipelining, hazard detection, any tangible way to interface with other peripheral devices, and it wasn't programmable, meaning that instructions had to be pre-loaded and synthesized as BRAM, making the design extremely unmodular. The previous iteration lacked pipelining, which made it prone to data hazards.
 
 This iteration features a hazard detection unit to find these types of hazards. This RISCV-v2 processor also aims to increase performance though multi-stage pipelining, forwarding/branch units, and two different L1 caches for instructions and data. 

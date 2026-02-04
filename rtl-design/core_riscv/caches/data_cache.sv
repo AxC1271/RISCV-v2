@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 
 // this will be a 2-way set associative cache
-module data_cache #(
+module data_cache # (
     parameter CACHE_SIZE = 4096,
     parameter BLOCK_SIZE = 16,
     parameter ADDR_WIDTH = 32,
