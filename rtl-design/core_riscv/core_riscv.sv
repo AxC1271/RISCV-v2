@@ -129,6 +129,62 @@ module core_riscv (
         .mem_ready()
     );
 
+    ifid_register ifid (
+        .clk(clk),
+        .rst_n(rst_n),
+        .stall(),
+        .flush(),
+        .if_pc(),
+        .if_instruction(),
+        .id_pc(),
+        .id_instruction()
+    );
+
+    idex_register idex (
+`       .clk(clk),
+        .rst_n(rst_n),
+        .flush(),
+        .id_pc(),
+        .id_rs1_data(),
+        .id_rs2_data(),
+        .id_immediate(),
+        .id_rs1(),
+        .id_rs2(),
+        .id_rd(),
+        .id_alu_op(),
+        .id_alu_src(),
+        .id_mem_read(),
+        .id_mem_write(),
+        .id_reg_write(),
+        .id_mem_to_reg(),
+        .ex_pc(),
+        .ex_rs1_data(),
+        .ex_rs2_data(),
+        .ex_immediate(),
+        .ex_rs1(),
+        .ex_rs2(),
+        .ex_rd(),
+        .ex_alu_op(),
+        .ex_alu_src(),
+        .ex_mem_read(),
+        .ex_mem_write(),
+        .ex_reg_write(),
+        .ex_mem_to_reg()
+    )
+
+    exmem_register exmem (
+        .clk(),
+        .rst_n(),
+        .ex_alu_result(),
+        .ex_rs2_data(),
+        .ex_rd(),
+        .ex_zero_flag()
+    );
+
+    memwb_register memwb (
+
+    );
+
 // instantiate processes here
 
     always_ff @ (posedge clk or negedge rst_n) begin

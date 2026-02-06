@@ -97,7 +97,7 @@ module data_cache # (
             state <= IDLE;
             ready <= 1'b0;
             
-            // Initialize
+            // initialize
             for (int i = 0; i < NUM_SETS; i++) begin
                 for (int j = 0; j < NUM_WAYS; j++) begin
                     valid_array[i][j] <= 1'b0;
@@ -114,7 +114,7 @@ module data_cache # (
                     
                     if (rd_en || wr_en) begin
                         if (hit) begin
-                            // Cache hit!
+                            // cache hit!
                             current_way <= hit_way;
                             
                             if (wr_en) begin
