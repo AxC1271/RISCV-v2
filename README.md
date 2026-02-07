@@ -26,16 +26,36 @@ To make the core more interesting, I wanted to add the possibility of writing in
 
 For the specific I-caches and D-caches in this processor, I will be implementing a direct-mapped cache hierarchy with a writeback policy for the I-cache due to its sequential nature. As for the D-cache, I chose to implement it using a 2-way set associative cache architecture with an LRU policy. As for why I decided to use those, you can check the `rtl-design/core_riscv/caches` directory for the technical explanation.
 
+### Processor Architecture
+
+I'm still implementing the RISC-V processor, much like my old processor. However, I've moved the instruction memory and data memory modules outside of the processor itself, so the core only encapsulates the following:
+- Program Counter
+- Register File
+- Control Unit
+- Arithmetic Logic Unit
+- Branching Unit
+- Forwarding Unit
+- Hazard Detection Unit
+- Immediate Generator
+- Pipelining Registers
+
+The memory and datapaths will be instantiated separately from the `RISC-V core` at the very top module.
 
 ---
 
 ## Verification (UVM)
 
-This project will be tested under UVM as two different systems: the RISC-V standalone core and the bootloader system. 
+This project will be tested under UVM as three different systems: the RISC-V standalone core, the AXI-interconnect, and the bootloader system. 
 
 ### RISC-V Core
 
+### AXI-Interconnect
+
 ### Bootloader
+
+---
+
+## Video Demo
 
 ---
 

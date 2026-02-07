@@ -39,9 +39,8 @@ module bootloader # (
     logic word_valid;
     logic word_ready;
     
-    // instruction memory write controller signals
     logic [9:0] wr_addr_counter;
-    logic [11:0] expected_bytes;  // number of bytes to receive (set by host)
+    logic [11:0] expected_bytes;  
     logic [11:0] received_bytes;
     
     // instantiate uart_rx
