@@ -43,7 +43,15 @@ The memory and datapaths will be instantiated separately from the `RISC-V core` 
 
 ---
 
-## Verification (UVM)
+## Universal Verification Methodology (UVM)
+
+<p align="center">
+    <img src="./images/uvm-diagram.png" />
+</p>
+
+*Figure: Standard UVM testbench architecture. UVM is maintained by 
+[Accellera Systems Initiative](https://www.accellera.org/downloads/standards/uvm).*
+
 
 This project will be tested under UVM as three different systems: the RISC-V standalone core, the AXI-interconnect, and the bootloader system. 
 
@@ -57,6 +65,8 @@ This project will be tested under UVM as three different systems: the RISC-V sta
 
 ## Video Demo
 
+As of February 6th, 2026, I am still working on integrating and validating the entire system. I'm aiming on recording a video demo which shows the SoC executing the Fibonacci code, before sending a serial stream of instructions using Python to program the FPGA as if it were a microcontroller.
+
 ---
 
 ## Credits + References
@@ -68,6 +78,8 @@ This project will be tested under UVM as three different systems: the RISC-V sta
 - **Cache Associativity Diagrams**: 
   [CS Illustrated](https://csillustrated.berkeley.edu/PDFs/handouts/cache-3-associativity-handout.pdf), 
   UC Berkeley EECS Department
+
+- **UVM Explanation**: Taken from the Accellera UVM Standard Documentation.
 
 ---
 

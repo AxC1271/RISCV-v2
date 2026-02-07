@@ -1,1 +1,13 @@
-# Bootloader Architecture
+# Bootloader
+
+## Purpose
+
+---
+
+## RTL Code
+
+---
+
+## Simulation + Waveform
+
+---
