@@ -1,4 +1,6 @@
-module ex_mem_register (
+`timescale 1ns / 1ps
+
+module exmem_register (
     input  logic        clk,
     input  logic        rst_n,
     

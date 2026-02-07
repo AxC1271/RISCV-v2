@@ -1,4 +1,6 @@
-module mem_wb_register (
+`timescale 1ns / 1ps
+
+module memwb_register (
     input  logic        clk,
     input  logic        rst_n,
     

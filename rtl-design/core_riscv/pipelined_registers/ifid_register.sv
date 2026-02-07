@@ -1,4 +1,6 @@
-module if_id_register (
+`timescale 1ns / 1ps
+
+module ifid_register (
     input  logic        clk,
     input  logic        rst_n,
     input  logic        stall,      // from hazard unit

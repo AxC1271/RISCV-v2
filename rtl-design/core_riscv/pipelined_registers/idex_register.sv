@@ -1,4 +1,6 @@
-module id_ex_register (
+`timescale 1ns / 1ps
+
+module idex_register (
     input  logic        clk,
     input  logic        rst_n,
     input  logic        flush,     
