@@ -9,26 +9,26 @@ module core_riscv (
     input  logic        rst_n,
     
     // CPU control (from system)
-    input  logic        cpu_enable,      // enable CPU execution (stall during boot)
+    input  logic        cpu_enable, // enable CPU execution (stall during boot)
     
-    output logic [31:0] imem_addr,       // addr to fetch from
-    output logic        imem_req,        // req signal
-    input  logic [31:0] imem_rdata,      // instr data
-    input  logic        imem_ready,      // memory ready (cache miss handling)
+    output logic [31:0] imem_addr, // addr to fetch from
+    output logic        imem_req, // req signal
+    input  logic [31:0] imem_rdata, // instr data
+    input  logic        imem_ready, // memory ready (cache miss handling)
     
-    output logic [31:0] dmem_addr,       // address for load/store
-    output logic [31:0] dmem_wdata,      // data to write (for stores)
-    output logic        dmem_rd_en,      // read enable (loads)
-    output logic        dmem_wr_en,      // write enable (stores)
-    output logic [2:0]  dmem_size,       // transfer size (byte, half, word)
-    input  logic [31:0] dmem_rdata,      // data read from memory
-    input  logic        dmem_ready,      // memory ready
+    output logic [31:0] dmem_addr, // address for load/store
+    output logic [31:0] dmem_wdata, // data to write (for stores)
+    output logic        dmem_rd_en, // read enable (loads)
+    output logic        dmem_wr_en, // write enable (stores)
+    output logic [2:0]  dmem_size, // transfer size (byte, half, word)
+    input  logic [31:0] dmem_rdata, // data read from memory
+    input  logic        dmem_ready, // memory ready
     
     // debug interface
-    output logic [31:0] debug_pc,        // curr pc value
-    output logic [31:0] debug_instr,     // curr instruction
-    output logic [31:0] debug_reg_data,  // register file debug readout
-    output logic        debug_halted     // cpu halted (for debugging)
+    output logic [31:0] debug_pc, // curr pc value
+    output logic [31:0] debug_instr, // curr instruction
+    output logic [31:0] debug_reg_data, // register file debug readout
+    output logic debug_halted // cpu halted (for debugging)
 );
 
     
@@ -36,9 +36,28 @@ module core_riscv (
     logic [31:0] pc_current, pc_next;
     logic        pc_stall;
     
-    // pipeline registers
+    // pipeline register (if/id)
     logic [31:0] if_pc, id_pc, ex_pc, mem_pc, wb_pc;
     logic [31:0] if_instr, id_instr, ex_instr, mem_instr, wb_instr;
+
+    // ex stage signals (from id/ex register)
+    logic [31:0] ex_rs1_data, ex_rs2_data, ex_immediate;
+    logic [4:0]  ex_rs1, ex_rs2, ex_rd;
+    logic [3:0]  ex_alu_op;
+    logic        ex_alu_src, ex_mem_read, ex_mem_write;
+    logic        ex_reg_write, ex_mem_to_reg;
+
+    // mem stage signals (from ex/mem register)
+    logic [31:0] mem_alu_result, mem_rs2_data;
+    logic [4:0]  mem_rd;
+    logic        mem_zero_flag;
+    logic        mem_mem_read, mem_mem_write;
+    logic        mem_reg_write, mem_mem_to_reg;
+
+    // wb stage signals (from mem/wb register)
+    logic [31:0] wb_alu_result, wb_read_data;
+    logic [4:0]  wb_rd;
+    logic        wb_reg_write, wb_mem_to_reg;
     
     // register file signals
     logic [31:0] rf_rs1_data, rf_rs2_data;
@@ -46,7 +65,7 @@ module core_riscv (
     logic [4:0]  rf_wr_addr;
     logic        rf_wr_en;
     
-    // ALU signals
+    // alu signals
     logic [31:0] alu_a, alu_b, alu_result;
     logic [3:0]  alu_op;
     logic        alu_zero;
@@ -79,7 +98,7 @@ module core_riscv (
         .clk(clk),
         .rst_n(rst_n),
         
-        // CPU side (from IF stage)
+        // cpu side (from if stage)
         .cpu_addr(icache_cpu_addr),
         .cpu_req(icache_cpu_req),
         .cpu_rdata(icache_cpu_rdata),
@@ -103,7 +122,7 @@ module core_riscv (
         .clk(clk),
         .rst_n(rst_n),
         
-        // CPU side (from mem stage)
+        // cpu side (from mem stage)
         .cpu_addr(dcache_cpu_addr),
         .cpu_wdata(dcache_cpu_wdata),
         .cpu_rd_en(dcache_cpu_rd_en),
@@ -122,6 +141,7 @@ module core_riscv (
     
     program_counter pc (
         .clk(clk),
+        .rst_n(rst_n),
         .pc_in(pc_next),
         .pc_out(pc_current)
     );
@@ -192,7 +212,7 @@ module core_riscv (
     hazard_unit hazard (
         .id_rs1(id_instr[19:15]),
         .id_rs2(id_instr[24:20]),
-        .ex_rd(ex_instr[11:7]),
+        .ex_rd(ex_rd),
         .ex_mem_read(ex_mem_read),
         .stall(stall),
         .flush_id_ex(flush)
@@ -216,34 +236,34 @@ module core_riscv (
         .flush(flush),
 
         .id_pc(id_pc),
-        .id_rs1_data(),
-        .id_rs2_data(),
-        .id_immediate(),
-        .id_rs1(),
-        .id_rs2(),
-        .id_rd(),
+        .id_rs1_data(rf_rs1_data),
+        .id_rs2_data(rf_rs2_data),
+        .id_immediate(immediate),
+        .id_rs1(id_instr[19:15]),
+        .id_rs2(id_instr[24:20]),
+        .id_rd(id_instr[11:7]),
 
-        .id_alu_op(),
-        .id_alu_src(),
-        .id_mem_read(),
-        .id_mem_write(),
-        .id_reg_write(),
-        .id_mem_to_reg(),
+        .id_alu_op(alu_op),
+        .id_alu_src(alu_src),
+        .id_mem_read(mem_read),
+        .id_mem_write(mem_write),
+        .id_reg_write(reg_write),
+        .id_mem_to_reg(mem_to_reg),
 
-        .ex_pc(),
-        .ex_rs1_data(),
-        .ex_rs2_data(),
-        .ex_immediate(),
-        .ex_rs1(),
-        .ex_rs2(),
-        .ex_rd(),
+        .ex_pc(ex_pc),
+        .ex_rs1_data(ex_rs1_data),
+        .ex_rs2_data(ex_rs2_data),
+        .ex_immediate(ex_immediate),
+        .ex_rs1(ex_rs1),
+        .ex_rs2(ex_rs2),
+        .ex_rd(ex_rd),
 
-        .ex_alu_op(),
-        .ex_alu_src(),
-        .ex_mem_read(),
-        .ex_mem_write(),
-        .ex_reg_write(),
-        .ex_mem_to_reg()
+        .ex_alu_op(ex_alu_op),
+        .ex_alu_src(ex_alu_src),
+        .ex_mem_read(ex_mem_read),
+        .ex_mem_write(ex_mem_write),
+        .ex_reg_write(ex_reg_write),
+        .ex_mem_to_reg(ex_mem_to_reg)
     );
     
     forward_unit fwd (
@@ -256,6 +276,31 @@ module core_riscv (
         .forward_a(forward_a),
         .forward_b(forward_b)
     );
+
+    // rs2 forwarding
+    logic [31:0] ex_rs2_forwarded;
+    always_comb begin
+        case (forward_b)
+            2'b00:   ex_rs2_forwarded = ex_rs2_data;
+            2'b01:   ex_rs2_forwarded = rf_wr_data;
+            2'b10:   ex_rs2_forwarded = mem_alu_result;
+            default: ex_rs2_forwarded = ex_rs2_data;
+        endcase
+    end
+
+    // alu input a
+    always_comb begin
+        case (forward_a)
+            2'b00:   alu_a = ex_rs1_data;
+            2'b01:   alu_a = rf_wr_data;
+            2'b10:   alu_a = mem_alu_result;
+            default: alu_a = ex_rs1_data;
+        endcase
+    end
+
+    // alu input b
+    assign alu_b = ex_alu_src ? ex_immediate : ex_rs2_forwarded;
+    assign alu_op = ex_alu_op;
     
     arith_logic_unit alu (
         .a(alu_a),
@@ -269,25 +314,25 @@ module core_riscv (
         .clk(clk),
         .rst_n(rst_n),
         
-        .ex_alu_result(),
-        .ex_rs2_data(),
-        .ex_rd(),
-        .ex_zero_flag(),
+        .ex_alu_result(alu_result),
+        .ex_rs2_data(ex_rs2_forwarded),
+        .ex_rd(ex_rd),
+        .ex_zero_flag(alu_zero),
 
-        .ex_mem_read(),
-        .ex_mem_write(),
-        .ex_reg_write(),
-        .ex_mem_to_reg(),
+        .ex_mem_read(ex_mem_read),
+        .ex_mem_write(ex_mem_write),
+        .ex_reg_write(ex_reg_write),
+        .ex_mem_to_reg(ex_mem_to_reg),
 
-        .mem_alu_result(),
-        .mem_rs2_data(),
-        .mem_rd(),
-        .mem_zero_flag(),
+        .mem_alu_result(mem_alu_result),
+        .mem_rs2_data(mem_rs2_data),
+        .mem_rd(mem_rd),
+        .mem_zero_flag(mem_zero_flag),
 
-        .mem_mem_read(),
-        .mem_mem_write(),
-        .mem_reg_write(),
-        .mem_mem_to_reg()
+        .mem_mem_read(mem_mem_read),
+        .mem_mem_write(mem_mem_write),
+        .mem_reg_write(mem_reg_write),
+        .mem_mem_to_reg(mem_mem_to_reg)
     );
     
     // d-cache interface (during mem stage)
@@ -295,25 +340,25 @@ module core_riscv (
     assign dcache_cpu_wdata = mem_rs2_data;
     assign dcache_cpu_rd_en = mem_mem_read;
     assign dcache_cpu_wr_en = mem_mem_write;
-    assign dmem_size = mem_funct3; 
+    assign dmem_size = 3'b010; 
     
     memwb_register memwb (
         .clk(clk),
         .rst_n(rst_n),
         
-        .mem_alu_result(),
-        .mem_read_data(),
-        .mem_rd(),
+        .mem_alu_result(mem_alu_result),
+        .mem_read_data(dcache_cpu_rdata),
+        .mem_rd(mem_rd),
 
-        .mem_reg_write(),
-        .mem_mem_to_reg(),
+        .mem_reg_write(mem_reg_write),
+        .mem_mem_to_reg(mem_mem_to_reg),
 
-        .wb_alu_result(),
-        .wb_read_data(),
-        .wb_rd(),
+        .wb_alu_result(wb_alu_result),
+        .wb_read_data(wb_read_data),
+        .wb_rd(wb_rd),
 
-        .wb_reg_write(),
-        .wb_mem_to_reg()
+        .wb_reg_write(wb_reg_write),
+        .wb_mem_to_reg(wb_mem_to_reg)
     );
     
     // writeback logic

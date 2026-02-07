@@ -15,7 +15,7 @@ module ifid_register (
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             id_pc <= 32'h0;
-            id_instruction <= 32'h00000013;  // NOP (addi x0, x0, 0)
+            id_instruction <= 32'h00000013;  
         end else if (stall) begin
             // hold current values
             id_pc <= id_pc;
