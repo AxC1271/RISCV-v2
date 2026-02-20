@@ -42,7 +42,7 @@ module uart_rx # (
     end
     
     // state register
-    always_ff @(posedge clk or negedge rst_n) begin
+    always_comb begin
         if (!rst_n)
             state <= IDLE;
         else
@@ -58,6 +58,7 @@ module uart_rx # (
             rx_data <= 0;
             wr <= 1'b0;
         end else begin
+            next_state <= state;
             wr <= 1'b0;  // default: don't write
             
             case (state)

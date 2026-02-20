@@ -6,16 +6,16 @@ module uart_rx_tb();
   localparam int CLK_FREQ   = 100_000_000;
   localparam int DATA_WIDTH = 8;
 
-  localparam int CLKS_PER_BIT = CLK_FREQ / BAUD_RATE;
-  localparam int CLK_PERIOD_NS = 10; // 100 MHz
-  localparam time BIT_TIME = CLKS_PER_BIT * CLK_PERIOD_NS; // in ns
+  localparam int CLKS_PER_BIT   = CLK_FREQ / BAUD_RATE;
+  localparam int CLK_PERIOD_NS  = 10; 
+  localparam time BIT_TIME      = CLKS_PER_BIT * CLK_PERIOD_NS;
 
   logic clk, rst_n;
   logic rx;
   logic [DATA_WIDTH-1:0] rx_data;
   logic wr;
 
-  uart_rx #(
+  uart_rx # (
     .BAUD_RATE(BAUD_RATE),
     .DATA_WIDTH(DATA_WIDTH),
     .CLK_FREQ(CLK_FREQ)
@@ -33,37 +33,33 @@ module uart_rx_tb();
     forever #(CLK_PERIOD_NS/2) clk = ~clk;
   end
 
-  // expected tracking (simple)
+  // expected tracking
   byte expected [0:15];
-  int exp_wr_idx;
+  int  exp_wr_idx;
 
   // send task: start + 8 data (LSB first) + stop
-  task automatic uart_send_byte(input byte b);
+ task automatic uart_send_byte(input byte b);
     begin
-      // idle high before frame
-      rx = 1;
-      #(BIT_TIME);
+        // start bit
+        rx = 0;
+        repeat (CLKS_PER_BIT) @(posedge clk);
 
-      // start bit
-      rx = 0;
-      #(BIT_TIME);
+        // data bits
+        for (int i = 0; i < 8; i++) begin
+            rx = b[i];
+            repeat (CLKS_PER_BIT) @(posedge clk);
+        end
 
-      // data bits LSB first
-      for (int i = 0; i < 8; i++) begin
-        rx = b[i];
-        #(BIT_TIME);
-      end
+        // stop bit
+        rx = 1;
+        repeat (CLKS_PER_BIT) @(posedge clk);
 
-      // stop bit
-      rx = 1;
-      #(BIT_TIME);
-
-      // small gap (optional, makes waveform clearer)
-      #(BIT_TIME);
+        // small gap
+        repeat (CLKS_PER_BIT) @(posedge clk);
     end
-  endtask
+endtask
 
-  // scoreboard/check on wr pulse
+  // check on wr pulse
   always_ff @(posedge clk) begin
     if (!rst_n) begin
       exp_wr_idx <= 0;
@@ -84,19 +80,22 @@ module uart_rx_tb();
              BIT_TIME, CLKS_PER_BIT);
 
     // init
-    rx = 1;
+    rx   = 1;
     rst_n = 0;
-    exp_wr_idx = 0;
+
+    // expected bytes
+    expected[0] = 8'h55;
+    expected[1] = 8'hA3;
+    expected[2] = 8'h00;
+    expected[3] = 8'hFF;
 
     // reset
     repeat (10) @(posedge clk);
     rst_n = 1;
 
-    // build expected list
-    expected[0] = 8'h55; // 01010101 nice for waveform
-    expected[1] = 8'hA3;
-    expected[2] = 8'h00;
-    expected[3] = 8'hFF;
+    // optional: glitch test (should be ignored)
+    // rx = 0; #(BIT_TIME/4);
+    // rx = 1; #(BIT_TIME);
 
     // send frames
     uart_send_byte(expected[0]);

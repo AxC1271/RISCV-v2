@@ -145,4 +145,10 @@ endmodule
 
 ---
 
-## Simulation + Waveforms
+## Simulation + Waveform
+
+<p align="center">
+    <img src="./uart-rx-waveform.png">
+</p>
+
+---
