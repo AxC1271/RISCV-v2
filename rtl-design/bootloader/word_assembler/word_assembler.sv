@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-module word_assembler #(
+module word_assembler # (
     parameter WORD_WIDTH = 32,
     parameter BYTE_WIDTH = 8
 ) (
