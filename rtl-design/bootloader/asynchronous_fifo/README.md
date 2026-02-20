@@ -7,6 +7,7 @@
     />
 </p>
 
+
 ## Purpose
 
 The asynchronous FIFO is one of the most common interview points when it comes to RTL design. When you do communication across multiple systems with different independent clocks, it is necessary to understand how to handle data transfers safely through clock domain crossings.
@@ -133,5 +134,13 @@ endmodule
 ---
 
 ## Simulation + Waveform
+
+The testbench is in this folder, and it ensures that the asynchronous FIFO does not allow writes when it's full nor does it allow reads when it's empty. Here's the waveform:
+
+<p align="center">
+    <img src="./fifo-waveform.png">
+</p>
+
+You can check the RTL code, where it contains two helper functions to automate the write until full and read until empty processes. The waveform is quite long here, but you can simulate for yourself using my code in this directory.
 
 ---
