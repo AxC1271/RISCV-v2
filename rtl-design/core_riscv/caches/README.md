@@ -17,26 +17,32 @@ Caches act as fast memory access for the CPU, lowering CPI and increasing overal
 ### Different Cache Archetypes
 
 * Direct Mapped Cache (1-way Set Associative)
-<p align="center">
-    <img 
-    src="../../../images/dmc-diagram.png" 
-    width=500px
-    />
-</p>
+
+A direct-mapped cache is the simplest organization: one cache line per index, no replacement policy needed. The tradeoff is higher conflict misses, since multiple memory blocks can map to the same index. Direct-mapped caches work well when the workload exhibits strong locality—especially instruction streams where sequential addresses fall within the same cache line (different word offsets).
 
 * N-way Set Associative
 
+Unlike a direct mapped cache, each cache line in an N-way set associative cache will have N ways. You can think of each cache line as a set, with a defined size for how many words can go in it. For a direct mapped cache, the size of each set is always 1, making it highly prone to cache conflicts if another address maps exactly to the same cache line. 
+
 * Fully Set Associative
 
-### Diferent Policies
-
-* Write-Through Policy
-
-* Write-Back Policy
-
-* Write-Around Policy
+This is the other end of the spectrum compared to a direct mapped approach.
 
 ### Design Decision
+
+In any sort of cache design, you have to consider trade-offs in how you want to go about your design. In many modern CPU systems, memory becomes a bottleneck for your processors because memory latency still runs 50-70 ns whereas your main CPU processor runs in the GHz range (each clock cycle is less than 1 ns). This means a simple cache miss would force the CPU to stall for (if each clock cycle is 0.33 ns imagine how many cycles the CPU must stall to wait for memory to load data). It's a good practice to start thinking about how you can reduce the effects of these cache misses, by either reducing the frequency at which they occur, the miss penalty, or hiding the latency. Such methods involve:
+
+* Increasing Ways / Cache Lines (More RAM though)
+* Prefetcher Circuit (Reduces Miss Penalty)
+* Out of Order Execution (ex. Tomasulo's Algorithm)
+
+These are just some ways of going about it, each with its own drawbacks. The specific choice of implementation depends on whether you can afford that extra hardware for increased performance, or whether a 10% reduction in cache misses is worth
+the extra delays in your CPU's critical path. These are just some questions to think about.
+
+The instruction cache is implemented as direct-mapped to minimize critical path delay and hardware complexity. Given that instruction streams generally exhibit strong spatial locality and sequential execution, the increased associativity was not deemed necessary for this embedded-class core.
+
+For the data cache, a 2-way set associative cache was the architecture of choice.
+
 
 ---
 
@@ -359,5 +365,9 @@ endmodule
 ---
 
 ## Simulation + Waveform
+
+---
+
+## References
 
 ---
