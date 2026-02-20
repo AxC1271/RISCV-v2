@@ -1,5 +1,17 @@
 # L1 Caches (D-caches and I-caches)
 
+## Configuration Summary
+
+| Feature | I-Cache | D-Cache |
+| --- | --- | --- |
+| Size | 1 kB | 4 kB |
+| Block Size | Row 2 Col 2 | Row 2 Col 3 |
+| Associativity | Direct-Mapped | 2-way Set Associative |
+| Write Policy | N/A | Write-Back / Dirty Bits |
+| Replacement | N/A | 1-bit LRU |
+
+---
+
 <p align="center">
     <img 
     src="../../../images/cache-explanation.png" 
@@ -14,35 +26,42 @@
 
 Caches act as fast memory access for the CPU, lowering CPI and increasing overall CPU performance. For the purposes of this single core processor with external peripherals, I implemented two separate L1 caches for the instruction memory and data memory modules.
 
-### Different Cache Archetypes
+---
 
-* Direct Mapped Cache (1-way Set Associative)
+## Different Cache Archetypes
+
+1. Direct Mapped Cache (1-way Set Associative)
 
 A direct-mapped cache is the simplest organization: one cache line per index, no replacement policy needed. The tradeoff is higher conflict misses, since multiple memory blocks can map to the same index. Direct-mapped caches work well when the workload exhibits strong locality—especially instruction streams where sequential addresses fall within the same cache line (different word offsets).
 
-* N-way Set Associative
+2. N-way Set Associative
 
 Unlike a direct mapped cache, each cache line in an N-way set associative cache will have N ways. You can think of each cache line as a set, with a defined size for how many words can go in it. For a direct mapped cache, the size of each set is always 1, making it highly prone to cache conflicts if another address maps exactly to the same cache line. 
 
-* Fully Set Associative
+3. Fully Set Associative
 
 This is the other end of the spectrum compared to a direct mapped approach.
 
-### Design Decision
+---
 
-In any sort of cache design, you have to consider trade-offs in how you want to go about your design. In many modern CPU systems, memory becomes a bottleneck for your processors because memory latency still runs 50-70 ns whereas your main CPU processor runs in the GHz range (each clock cycle is less than 1 ns). This means a simple cache miss would force the CPU to stall for (if each clock cycle is 0.33 ns imagine how many cycles the CPU must stall to wait for memory to load data). It's a good practice to start thinking about how you can reduce the effects of these cache misses, by either reducing the frequency at which they occur, the miss penalty, or hiding the latency. Such methods involve:
+## Design Decision
 
-* Increasing Ways / Cache Lines (More RAM though)
-* Prefetcher Circuit (Reduces Miss Penalty)
-* Out of Order Execution (ex. Tomasulo's Algorithm)
+In any sort of cache design, you have to consider trade-offs in how you want to go about your design. In many modern CPU systems, DRAM latency is orders of magnitude larger than a CPU cycle, so a cache miss can cost hundreds of core cycles. Cache performance is often discussed in terms of three levers:
+
+* Reduce miss rate (fewer misses): larger caches, higher associativity, better replacement, better locality.
+
+* Reduce miss penalty (cheaper misses): faster lower memory, wider interfaces, critical-word-first / early restart (in more advanced designs).
+
+* Hide latency (misses still happen, but hurt less): prefetching, non-blocking caches (MSHRs), out-of-order execution, multithreading.
+
+The right choice depends on workload and constraints—area, timing/critical path, and design complexity.
 
 These are just some ways of going about it, each with its own drawbacks. The specific choice of implementation depends on whether you can afford that extra hardware for increased performance, or whether a 10% reduction in cache misses is worth
 the extra delays in your CPU's critical path. These are just some questions to think about.
 
 The instruction cache is implemented as direct-mapped to minimize critical path delay and hardware complexity. Given that instruction streams generally exhibit strong spatial locality and sequential execution, the increased associativity was not deemed necessary for this embedded-class core.
 
-For the data cache, a 2-way set associative cache was the architecture of choice.
-
+For the data cache, a 2-way set associative cache was the architecture of choice. This is because data access is a lot more sporadic and less predictable than instructions, so having increased ways to reduce conflict misses was much more worth it than for the instruction pipeline.
 
 ---
 
