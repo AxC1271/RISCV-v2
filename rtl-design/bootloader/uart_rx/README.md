@@ -57,7 +57,7 @@ module uart_rx # (
     end
     
     // state register
-    always_ff @(posedge clk or negedge rst_n) begin
+    always_comb begin
         if (!rst_n)
             state <= IDLE;
         else
@@ -73,6 +73,7 @@ module uart_rx # (
             rx_data <= 0;
             wr <= 1'b0;
         end else begin
+            next_state <= state;
             wr <= 1'b0;  // default: don't write
             
             case (state)
@@ -150,5 +151,9 @@ endmodule
 <p align="center">
     <img src="./uart-rx-waveform.png">
 </p>
+
+Here, you can see the RX signal toggling up and down, and `rx_data` is actually updating correctly right after each stop bit.
+Download both the `uart_rx.sv` and `uart_rx_tb.sv` and run the simulations (run on 1ms) to view the waveforms in closer detail.
+
 
 ---
