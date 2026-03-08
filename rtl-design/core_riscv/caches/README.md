@@ -40,7 +40,9 @@ Unlike a direct mapped cache, each cache line in an N-way set associative cache 
 
 3. Fully Set Associative
 
-This is the other end of the spectrum compared to a direct mapped approach.
+Fully associative is the other end of the spectrum from direct-mapped. Any memory block can be placed in any cache line; there is no index field in the address at all. The entire tag is compared against every cache line simultaneously using parallel comparators, so a lookup requires checking all N lines at once. This eliminates conflict misses entirely: two addresses can never evict each other simply because they share an index, since there is no index. The only misses that remain are cold misses (first access to a block) and capacity misses (the cache is genuinely full).
+
+The tradeoff is hardware cost. Parallel tag comparison across all lines requires N comparators running simultaneously, and the replacement policy (typically LRU or a pseudo-LRU approximation) becomes significantly more complex as N grows.
 
 ---
 
@@ -110,12 +112,59 @@ launch_simulation: Time (s): cpu = 00:00:11 ; elapsed = 00:00:28 . Memory (MB): 
 
 Here's the waveform and text output for the data cache simulation:
 
-```
+<p align="center">
+    <img src="./d-cache-waveform.png" />
+</p>
 
+```
+# run 1000ns
+
+========== TEST 1: cold read miss then hits in same block ==========
+[READ ] addr=00000000  MISS  wait=6  data=a0000000  set=0  tag=0  time=130000
+[READ ] addr=00000004  HIT   wait=2  data=a0000001  set=0  tag=0  time=160000
+[READ ] addr=00000008  HIT   wait=2  data=a0000002  set=0  tag=0  time=190000
+[READ ] addr=0000000c  HIT   wait=2  data=a0000003  set=0  tag=0  time=220000
+
+========== TEST 2: write hit then read back ==========
+[WRITE] addr=00000004  HIT   wait=2  wdata=deadbeef  set=0  tag=0  time=250000
+[READ ] addr=00000004  HIT   wait=2  data=deadbeef  set=0  tag=0  time=280000
+Write-back check PASSED: backing_mem[1] = a0000001 (unchanged)
+
+========== TEST 3: fill both ways of same set ==========
+[READ ] addr=00000000  HIT   wait=2  data=a0000000  set=0  tag=0  time=310000
+[READ ] addr=00000800  MISS  wait=6  data=a0000200  set=0  tag=1  time=380000
+
+========== TEST 4: force dirty eviction / write-back ==========
+[WRITE] addr=00000000  HIT   wait=2  wdata=cafef00d  set=0  tag=0  time=410000
+[READ ] addr=00001000  MISS  wait=6  data=a0000400  set=0  tag=2  time=480000
+Post-eviction: backing_mem[0x0000_0000>>2] = a0000000
+Way 0 was not the eviction victim (LRU chose differently - ok).
+
+========== TEST 5: read back all three competing lines ==========
+[READ ] addr=00000000  HIT   wait=2  data=cafef00d  set=0  tag=0  time=510000
+[READ ] addr=00000800  MISS  wait=6  data=a0000200  set=0  tag=1  time=580000
+[READ ] addr=00001000  MISS  wait=10  data=a0000400  set=0  tag=2  time=690000
+
+========== TEST 6: sequential streaming (4 cache lines) ==========
+[READ ] addr=00002000  MISS  wait=6  data=a0000800  set=0  tag=4  time=760000
+[READ ] addr=00002004  HIT   wait=2  data=a0000801  set=0  tag=4  time=790000
+[READ ] addr=00002008  HIT   wait=2  data=a0000802  set=0  tag=4  time=820000
+[READ ] addr=0000200c  HIT   wait=2  data=a0000803  set=0  tag=4  time=850000
+[READ ] addr=00002010  MISS  wait=6  data=a0000804  set=1  tag=4  time=920000
+[READ ] addr=00002014  HIT   wait=2  data=a0000805  set=1  tag=4  time=950000
+[READ ] addr=00002018  HIT   wait=2  data=a0000806  set=1  tag=4  time=980000
+xsim: Time (s): cpu = 00:00:09 ; elapsed = 00:00:13 . Memory (MB): peak = 1374.258 ; gain = 0.000
+INFO: [USF-XSim-96] XSim completed. Design snapshot 'data_cache_tb_behav' loaded.
+INFO: [USF-XSim-97] XSim simulation ran for 1000ns
+launch_simulation: Time (s): cpu = 00:00:12 ; elapsed = 00:00:30 . Memory (MB): peak = 1374.258 ; gain = 0.000
 ```
 
 ---
 
 ## References
+
+[1] E. Ren, "Cache associativity," CS Illustrated, University of California, Berkeley, 
+    Berkeley, CA, USA. [Online]. Available: 
+    https://csillustrated.berkeley.edu/PDFs/handouts/cache-3-associativity-handout.pdf
 
 ---

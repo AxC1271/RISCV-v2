@@ -1,23 +1,26 @@
 `timescale 1ns / 1ps
 
-// this will be a 2-way set associative cache
-module data_cache # (
+// 4kB 2-way set associative write-back / write-allocate data cache.
+
+module data_cache #(
     parameter CACHE_SIZE = 4096,
     parameter BLOCK_SIZE = 16,
     parameter ADDR_WIDTH = 32,
     parameter DATA_WIDTH = 32,
-    parameter NUM_WAYS = 2
-) (
+    parameter NUM_WAYS   = 2
+)(
     input logic clk,
     input logic rst_n,
+
+    // cpu interface
     input logic [ADDR_WIDTH-1:0] addr,
     input logic [DATA_WIDTH-1:0] wr_data,
     input logic rd_en,
     input logic wr_en,
     output logic [DATA_WIDTH-1:0] rd_data,
     output logic ready,
-    
-    // memory interface
+
+    // memory interface (combinational outputs)
     output logic [ADDR_WIDTH-1:0] mem_addr,
     output logic [DATA_WIDTH-1:0] mem_wr_data,
     output logic mem_rd_en,
@@ -27,181 +30,193 @@ module data_cache # (
 );
 
     localparam BLOCK_WORDS = BLOCK_SIZE / 4;
-    localparam TOTAL_BLOCKS = CACHE_SIZE / BLOCK_SIZE;  // 256 total blocks
-    localparam NUM_SETS = TOTAL_BLOCKS / NUM_WAYS;  // 128 sets, 2 ways each
-    localparam SET_INDEX_BITS = $clog2(NUM_SETS); // 7 bits
-    localparam OFFSET_BITS = $clog2(BLOCK_SIZE); // 4 bits
-    localparam TAG_BITS = ADDR_WIDTH - SET_INDEX_BITS - OFFSET_BITS;  // 21 bits
-    
+    localparam TOTAL_BLOCKS = CACHE_SIZE / BLOCK_SIZE;
+    localparam NUM_SETS = TOTAL_BLOCKS / NUM_WAYS;
+    localparam SET_INDEX_BITS = $clog2(NUM_SETS);
+    localparam OFFSET_BITS = $clog2(BLOCK_SIZE);
+    localparam WORD_OFF_BITS = $clog2(BLOCK_WORDS);
+    localparam TAG_BITS = ADDR_WIDTH - SET_INDEX_BITS - OFFSET_BITS;
+
     logic [TAG_BITS-1:0] tag;
-    logic [SET_INDEX_BITS-1:0] set_index; 
-    logic [OFFSET_BITS-1:0] offset;
-    logic [1:0] word_offset;
-    
-    assign tag = addr[ADDR_WIDTH-1:SET_INDEX_BITS+OFFSET_BITS];
-    assign set_index = addr[SET_INDEX_BITS+OFFSET_BITS-1:OFFSET_BITS];
-    assign offset = addr[OFFSET_BITS-1:0];
-    assign word_offset = offset[OFFSET_BITS-1:2];
-    
-    // cache storage
+    logic [SET_INDEX_BITS-1:0] set_index;
+    logic [WORD_OFF_BITS-1:0] word_offset;
+
+    assign tag = addr[ADDR_WIDTH-1 : SET_INDEX_BITS+OFFSET_BITS];
+    assign set_index = addr[SET_INDEX_BITS+OFFSET_BITS-1 : OFFSET_BITS];
+    assign word_offset = addr[OFFSET_BITS-1 : 2];
+
+    logic [TAG_BITS-1:0] miss_tag;
+    logic [SET_INDEX_BITS-1:0] miss_set;
+    logic [WORD_OFF_BITS-1:0] miss_word_offset;
+    logic miss_wr_en;
+    logic [DATA_WIDTH-1:0] miss_wr_data;
+
+
     logic [DATA_WIDTH-1:0] data_array [NUM_SETS-1:0][NUM_WAYS-1:0][BLOCK_WORDS-1:0];
     logic [TAG_BITS-1:0] tag_array [NUM_SETS-1:0][NUM_WAYS-1:0];
     logic valid_array [NUM_SETS-1:0][NUM_WAYS-1:0];
     logic dirty_array [NUM_SETS-1:0][NUM_WAYS-1:0];
-    
-    // LRU bits (replacement policy here)
-    // for a 2-way: 1 bit per set (0=use way0, 1=use way1)
     logic lru_array [NUM_SETS-1:0];
-    
-    // tag comparison (check both ways)
-    logic hit_way0, hit_way1;
-    logic hit;
-    logic hit_way;  // which way hit (0 or 1)
-    
+
+    logic hit_way0, hit_way1, hit;
+    logic hit_way;
+
     assign hit_way0 = valid_array[set_index][0] && (tag_array[set_index][0] == tag);
     assign hit_way1 = valid_array[set_index][1] && (tag_array[set_index][1] == tag);
-    assign hit = hit_way0 || hit_way1;
-    assign hit_way = hit_way1 ? 1'b1 : 1'b0;  
-    
-    logic [DATA_WIDTH-1:0] cache_data;
-    assign cache_data = hit_way0 ? data_array[set_index][0][word_offset] :
-                                    data_array[set_index][1][word_offset];
-    
-    // replacement policy: LRU
-    logic replace_way;  // which way to replace on miss
-    
+    assign hit      = hit_way0 || hit_way1;
+    assign hit_way  = hit_way1 ? 1'b1 : 1'b0;
+
+    logic replace_way;
     always_comb begin
-        if (!valid_array[set_index][0]) begin
-            replace_way = 1'b0;  // way 0 is invalid, use it
-        end else if (!valid_array[set_index][1]) begin
-            replace_way = 1'b1;  // way 1 is invalid, use it
-        end else begin
-            replace_way = lru_array[set_index];  // both valid, use LRU
-        end
+        if      (!valid_array[set_index][0]) replace_way = 1'b0;
+        else if (!valid_array[set_index][1]) replace_way = 1'b1;
+        else                                 replace_way = lru_array[set_index];
     end
-    
-    typedef enum logic [2:0] {
-        IDLE,
-        WRITE_BACK,
-        ALLOCATE_READ,
-        ALLOCATE_WAIT,
-        READY_STATE
-    } cache_state_t;
-    
-    cache_state_t state, next_state;
-    logic [1:0] word_counter;
-    logic [0:0] current_way;
-    
+
+    typedef enum logic [1:0] {
+        IDLE       = 2'd0,
+        WRITE_BACK = 2'd1,
+        ALLOCATE   = 2'd2,
+        DONE       = 2'd3
+    } state_t;
+
+    state_t                   state;
+    logic [WORD_OFF_BITS-1:0] word_counter;
+    logic                     current_way;
+
+    logic [DATA_WIDTH-1:0] refill_data [BLOCK_WORDS-1:0];
+
+    always_comb begin
+        mem_rd_en   = 1'b0;
+        mem_wr_en   = 1'b0;
+        mem_addr    = '0;
+        mem_wr_data = '0;
+
+        case (state)
+            WRITE_BACK: begin
+                mem_wr_en   = 1'b1;
+                mem_addr    = {tag_array[miss_set][current_way],
+                               miss_set, word_counter, 2'b00};
+                mem_wr_data = data_array[miss_set][current_way][word_counter];
+            end
+            ALLOCATE: begin
+                mem_rd_en = 1'b1;
+                mem_addr  = {miss_tag, miss_set, word_counter, 2'b00};
+            end
+            default: ;
+        endcase
+    end
+
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            state <= IDLE;
-            ready <= 1'b0;
-            
-            // initialize
+            state            <= IDLE;
+            ready            <= 1'b0;
+            rd_data          <= '0;
+            word_counter     <= '0;
+            current_way      <= 1'b0;
+            miss_tag         <= '0;
+            miss_set         <= '0;
+            miss_word_offset <= '0;
+            miss_wr_en       <= 1'b0;
+            miss_wr_data     <= '0;
+
+            for (int i = 0; i < BLOCK_WORDS; i++)
+                refill_data[i] <= '0;
+
             for (int i = 0; i < NUM_SETS; i++) begin
+                lru_array[i] <= 1'b0;
                 for (int j = 0; j < NUM_WAYS; j++) begin
                     valid_array[i][j] <= 1'b0;
                     dirty_array[i][j] <= 1'b0;
                 end
-                lru_array[i] <= 1'b0;
             end
+
         end else begin
-            state <= next_state;
-            
+
+            ready <= 1'b0; // default
+
             case (state)
                 IDLE: begin
-                    ready <= 1'b0;
-                    
                     if (rd_en || wr_en) begin
                         if (hit) begin
-                            // cache hit!
-                            current_way <= hit_way;
-                            
                             if (wr_en) begin
                                 data_array[set_index][hit_way][word_offset] <= wr_data;
-                                dirty_array[set_index][hit_way] <= 1'b1;
+                                dirty_array[set_index][hit_way]             <= 1'b1;
                             end
-                            
-                            rd_data <= cache_data;
-                            ready <= 1'b1;
-                            
-                            // update the LRU
-                            lru_array[set_index] <= ~hit_way; // next time, use other way
-                            
-                            next_state <= READY_STATE;
+                            rd_data <= wr_en ? wr_data
+                                             : data_array[set_index][hit_way][word_offset];
+                            ready   <= 1'b1;
+                            lru_array[set_index] <= ~hit_way;
+                            state <= DONE;
+
                         end else begin
-                            // cache miss!
-                            current_way <= replace_way;
-                            
-                            if (valid_array[set_index][replace_way] && 
-                                dirty_array[set_index][replace_way]) begin
-                                // need writeback
-                                next_state <= WRITE_BACK;
-                                word_counter <= 0;
-                            end else begin
-                                // can allocate directly
-                                next_state <= ALLOCATE_READ;
-                                word_counter <= 0;
-                            end
+                            // miss -- latch request, choose victim
+                            current_way      <= replace_way;
+                            miss_tag         <= tag;
+                            miss_set         <= set_index;
+                            miss_word_offset <= word_offset;
+                            miss_wr_en       <= wr_en;
+                            miss_wr_data     <= wr_data;
+                            word_counter     <= '0;
+
+                            if (valid_array[set_index][replace_way] &&
+                                dirty_array[set_index][replace_way])
+                                state <= WRITE_BACK;
+                            else
+                                state <= ALLOCATE;
                         end
                     end
                 end
-                
                 WRITE_BACK: begin
-                    mem_wr_en <= 1'b1;
-                    mem_addr <= {tag_array[set_index][current_way], 
-                                 set_index, word_counter, 2'b00};
-                    mem_wr_data <= data_array[set_index][current_way][word_counter];
-                    
+                    // mem_addr/mem_wr_en driven combinationally above
                     if (mem_ready) begin
-                        if (word_counter == BLOCK_WORDS - 1) begin
-                            dirty_array[set_index][current_way] <= 1'b0;
-                            next_state <= ALLOCATE_READ;
-                            word_counter <= 0;
+                        if (word_counter == WORD_OFF_BITS'(BLOCK_WORDS - 1)) begin
+                            dirty_array[miss_set][current_way] <= 1'b0;
+                            word_counter <= '0;
+                            state        <= ALLOCATE;
                         end else begin
-                            word_counter <= word_counter + 1;
+                            word_counter <= word_counter + 1'b1;
                         end
                     end
                 end
-                
-                ALLOCATE_READ: begin
-                    mem_rd_en <= 1'b1;
-                    mem_addr <= {tag, set_index, word_counter, 2'b00};
-                    
+                ALLOCATE: begin
+                    // mem_addr/mem_rd_en driven combinationally above.
+                    // mem_ready is combinational from the TB, so it is
+                    // high on the same cycle mem_rd_en goes high.
                     if (mem_ready) begin
-                        data_array[set_index][current_way][word_counter] <= mem_rd_data;
-                        
-                        if (word_counter == BLOCK_WORDS - 1) begin
-                            tag_array[set_index][current_way] <= tag;
-                            valid_array[set_index][current_way] <= 1'b1;
-                            dirty_array[set_index][current_way] <= 1'b0;
-                            
-                            // handle original request
-                            if (wr_en) begin
-                                data_array[set_index][current_way][word_offset] <= wr_data;
-                                dirty_array[set_index][current_way] <= 1'b1;
-                            end
-                            
-                            rd_data <= (wr_en) ? wr_data : 
-                                       data_array[set_index][current_way][word_offset];
+                        if (miss_wr_en && (word_counter == miss_word_offset)) begin
+                            data_array[miss_set][current_way][word_counter] <= miss_wr_data;
+                            refill_data[word_counter]                       <= miss_wr_data;
+                        end else begin
+                            data_array[miss_set][current_way][word_counter] <= mem_rd_data;
+                            refill_data[word_counter]                       <= mem_rd_data;
+                        end
+
+                        if (word_counter == WORD_OFF_BITS'(BLOCK_WORDS - 1)) begin
+                            tag_array[miss_set][current_way]   <= miss_tag;
+                            valid_array[miss_set][current_way] <= 1'b1;
+                            dirty_array[miss_set][current_way] <= miss_wr_en;
+
+                            if (miss_wr_en)
+                                rd_data <= miss_wr_data;
+                            else if (word_counter == miss_word_offset)
+                                rd_data <= mem_rd_data;   // last word IS the requested word
+                            else
+                                rd_data <= refill_data[miss_word_offset]; // from earlier cycle
+
                             ready <= 1'b1;
-                            
-                            // update the LRU
-                            lru_array[set_index] <= ~current_way;
-                            
-                            next_state <= READY_STATE;
+                            lru_array[miss_set] <= ~current_way;
+                            state <= DONE;
                         end else begin
-                            word_counter <= word_counter + 1;
+                            word_counter <= word_counter + 1'b1;
                         end
                     end
                 end
-                
-                READY_STATE: begin
-                    ready <= 1'b0;
-                    next_state <= IDLE;
+                DONE: begin
+                    state <= IDLE;
                 end
+                default: state <= IDLE;
             endcase
         end
     end
-
 endmodule
