@@ -14,7 +14,7 @@
 
 <p align="center">
     <img 
-    src="../../../images/cache-explanation.png" 
+    src="../../images/cache-explanation.png" 
     width=500px
     />
 </p>

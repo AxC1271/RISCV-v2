@@ -2,7 +2,7 @@
 
 <p align="center">
     <img 
-    src="../../../images/asynchfifo-diagram.png" 
+    src="../../images/asynchfifo-diagram.png" 
     width=500px
     />
 </p>
