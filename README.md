@@ -79,8 +79,6 @@ As of February 6th, 2026, I am still working on integrating and validating the e
   [CS Illustrated](https://csillustrated.berkeley.edu/PDFs/handouts/cache-3-associativity-handout.pdf), 
   UC Berkeley EECS Department
 
-- **UVM Explanation**: Taken from the Accellera UVM Standard Documentation.
-
 ---
 
 Thanks for stopping by!
