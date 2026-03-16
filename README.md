@@ -43,29 +43,9 @@ The memory and datapaths will be instantiated separately from the `RISC-V core` 
 
 ---
 
-## Universal Verification Methodology (UVM)
-
-<p align="center">
-    <img src="./images/uvm-diagram.png" />
-</p>
-
-*Figure: Standard UVM testbench architecture. UVM is maintained by 
-[Accellera Systems Initiative](https://www.accellera.org/downloads/standards/uvm).*
-
-
-This project will be tested under UVM as three different systems: the RISC-V standalone core, the AXI-interconnect, and the bootloader system. 
-
-### RISC-V Core
-
-### AXI-Interconnect
-
-### Bootloader
-
----
-
 ## Video Demo
 
-As of February 6th, 2026, I am still working on integrating and validating the entire system. I'm aiming on recording a video demo which shows the SoC executing the Fibonacci code, before sending a serial stream of instructions using Python to program the FPGA as if it were a microcontroller.
+As of March 16th, 2026, I'm testbenching the RISC-V core and working on the AXI implementation. I'm aiming on recording a video demo which shows the SoC doing some basic UART as well as reading data from a temperature sensor using SPI before sending a serial stream of instructions using Python to program the FPGA as if it were a microcontroller.
 
 ---
 
