@@ -10,6 +10,8 @@ AXI is an AMBA bus protocol
 
 ## Design
 
+Since we have multiple slave peripherals and one master peripheral, we need to use an interconnect which will serve as the bus for routing traffic to the correct destinations.
+
 ---
 
 ## Simulation + Waveform

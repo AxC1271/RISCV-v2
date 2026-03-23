@@ -1,7 +1,6 @@
 `timescale 1ns / 1ps
 
 // 4kB 2-way set associative write-back / write-allocate data cache.
-
 module data_cache #(
     parameter CACHE_SIZE = 4096,
     parameter BLOCK_SIZE = 16,
@@ -9,24 +8,24 @@ module data_cache #(
     parameter DATA_WIDTH = 32,
     parameter NUM_WAYS   = 2
 )(
-    input logic clk,
-    input logic rst_n,
+    input  logic clk,
+    input  logic rst_n,
 
     // cpu interface
-    input logic [ADDR_WIDTH-1:0] addr,
-    input logic [DATA_WIDTH-1:0] wr_data,
-    input logic rd_en,
-    input logic wr_en,
+    input  logic [ADDR_WIDTH-1:0] addr,
+    input  logic [DATA_WIDTH-1:0] wr_data,
+    input  logic rd_en,
+    input  logic wr_en,
     output logic [DATA_WIDTH-1:0] rd_data,
     output logic ready,
 
     // memory interface (combinational outputs)
     output logic [ADDR_WIDTH-1:0] mem_addr,
     output logic [DATA_WIDTH-1:0] mem_wr_data,
-    output logic mem_rd_en,
-    output logic mem_wr_en,
-    input logic [DATA_WIDTH-1:0] mem_rd_data,
-    input logic mem_ready
+    output logic                  mem_rd_en,
+    output logic                  mem_wr_en,
+    input  logic [DATA_WIDTH-1:0] mem_rd_data,
+    input  logic                  mem_ready
 );
 
     localparam BLOCK_WORDS = BLOCK_SIZE / 4;
@@ -45,18 +44,21 @@ module data_cache #(
     assign set_index = addr[SET_INDEX_BITS+OFFSET_BITS-1 : OFFSET_BITS];
     assign word_offset = addr[OFFSET_BITS-1 : 2];
 
+  
+    // latch request -- stable throughout miss service
     logic [TAG_BITS-1:0] miss_tag;
     logic [SET_INDEX_BITS-1:0] miss_set;
     logic [WORD_OFF_BITS-1:0] miss_word_offset;
     logic miss_wr_en;
     logic [DATA_WIDTH-1:0] miss_wr_data;
 
-
+    // cache storage arrays
     logic [DATA_WIDTH-1:0] data_array [NUM_SETS-1:0][NUM_WAYS-1:0][BLOCK_WORDS-1:0];
     logic [TAG_BITS-1:0] tag_array [NUM_SETS-1:0][NUM_WAYS-1:0];
     logic valid_array [NUM_SETS-1:0][NUM_WAYS-1:0];
     logic dirty_array [NUM_SETS-1:0][NUM_WAYS-1:0];
     logic lru_array [NUM_SETS-1:0];
+
 
     logic hit_way0, hit_way1, hit;
     logic hit_way;
@@ -66,6 +68,7 @@ module data_cache #(
     assign hit      = hit_way0 || hit_way1;
     assign hit_way  = hit_way1 ? 1'b1 : 1'b0;
 
+    // replacement way (combinational)
     logic replace_way;
     always_comb begin
         if      (!valid_array[set_index][0]) replace_way = 1'b0;
@@ -84,6 +87,7 @@ module data_cache #(
     logic [WORD_OFF_BITS-1:0] word_counter;
     logic                     current_way;
 
+    // shadow register: mirrors every word written to data_array during refill.
     logic [DATA_WIDTH-1:0] refill_data [BLOCK_WORDS-1:0];
 
     always_comb begin
@@ -99,10 +103,12 @@ module data_cache #(
                                miss_set, word_counter, 2'b00};
                 mem_wr_data = data_array[miss_set][current_way][word_counter];
             end
+
             ALLOCATE: begin
                 mem_rd_en = 1'b1;
                 mem_addr  = {miss_tag, miss_set, word_counter, 2'b00};
             end
+
             default: ;
         endcase
     end
@@ -132,10 +138,10 @@ module data_cache #(
             end
 
         end else begin
-
             ready <= 1'b0; // default
 
             case (state)
+
                 IDLE: begin
                     if (rd_en || wr_en) begin
                         if (hit) begin
@@ -143,9 +149,10 @@ module data_cache #(
                                 data_array[set_index][hit_way][word_offset] <= wr_data;
                                 dirty_array[set_index][hit_way]             <= 1'b1;
                             end
+
                             rd_data <= wr_en ? wr_data
                                              : data_array[set_index][hit_way][word_offset];
-                            ready   <= 1'b1;
+
                             lru_array[set_index] <= ~hit_way;
                             state <= DONE;
 
@@ -167,8 +174,8 @@ module data_cache #(
                         end
                     end
                 end
+
                 WRITE_BACK: begin
-                    // mem_addr/mem_wr_en driven combinationally above
                     if (mem_ready) begin
                         if (word_counter == WORD_OFF_BITS'(BLOCK_WORDS - 1)) begin
                             dirty_array[miss_set][current_way] <= 1'b0;
@@ -179,10 +186,8 @@ module data_cache #(
                         end
                     end
                 end
+
                 ALLOCATE: begin
-                    // mem_addr/mem_rd_en driven combinationally above.
-                    // mem_ready is combinational from the TB, so it is
-                    // high on the same cycle mem_rd_en goes high.
                     if (mem_ready) begin
                         if (miss_wr_en && (word_counter == miss_word_offset)) begin
                             data_array[miss_set][current_way][word_counter] <= miss_wr_data;
@@ -200,11 +205,10 @@ module data_cache #(
                             if (miss_wr_en)
                                 rd_data <= miss_wr_data;
                             else if (word_counter == miss_word_offset)
-                                rd_data <= mem_rd_data;   // last word IS the requested word
+                                rd_data <= mem_rd_data;
                             else
-                                rd_data <= refill_data[miss_word_offset]; // from earlier cycle
+                                rd_data <= refill_data[miss_word_offset];
 
-                            ready <= 1'b1;
                             lru_array[miss_set] <= ~current_way;
                             state <= DONE;
                         end else begin
@@ -212,11 +216,23 @@ module data_cache #(
                         end
                     end
                 end
+
                 DONE: begin
-                    state <= IDLE;
+                    // hold ready high until requester drops rd_en/wr_en.
+                    // prevents the same level-held mem-stage request
+                    // from being re-issued when we return to idle.
+                    ready <= 1'b1;
+
+                    if (!(rd_en || wr_en))
+                        state <= IDLE;
+                    else
+                        state <= DONE;
                 end
+
                 default: state <= IDLE;
+
             endcase
         end
     end
+
 endmodule

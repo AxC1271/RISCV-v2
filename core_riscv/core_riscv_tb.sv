@@ -134,21 +134,6 @@ module core_riscv_tb ();
         forever #(CLK_PERIOD/2) clk = ~clk;
     end
 
-    // -------------------------------------------------------
-    // Instruction ROM — combinational, preloaded
-    //
-    // Encoding reference (RV32I):
-    //   LUI   rd, imm20          : imm[31:12] | rd | 0110111
-    //   ADDI  rd, rs1, imm12     : imm[11:0]  | rs1 | 000 | rd | 0010011
-    //   SW    rs2, imm(rs1)      : imm[11:5]  | rs2 | rs1 | 010 | imm[4:0] | 0100011
-    //   LW    rd,  imm(rs1)      : imm[11:0]  | rs1 | 010 | rd  | 0000011
-    //   ADD   rd, rs1, rs2       : 0000000 | rs2 | rs1 | 000 | rd | 0110011
-    //   SUB   rd, rs1, rs2       : 0100000 | rs2 | rs1 | 000 | rd | 0110011
-    //   AND   rd, rs1, rs2       : 0000000 | rs2 | rs1 | 111 | rd | 0110011
-    //   OR    rd, rs1, rs2       : 0000000 | rs2 | rs1 | 110 | rd | 0110011
-    //   BEQ   rs1, rs2, imm13    : imm[12|10:5] | rs2 | rs1 | 000 | imm[4:1|11] | 1100011
-    //   NOP = ADDI x0, x0, 0    : 32'h0000_0013
-    // -------------------------------------------------------
     logic [31:0] imem [0:IMEM_WORDS-1];
 
     initial begin
