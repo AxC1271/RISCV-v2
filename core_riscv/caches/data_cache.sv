@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 
 // 4kB 2-way set associative write-back / write-allocate data cache.
-module data_cache #(
+module data_cache # (
     parameter CACHE_SIZE = 4096,
     parameter BLOCK_SIZE = 16,
     parameter ADDR_WIDTH = 32,
