@@ -1,5 +1,5 @@
 `timescale 1ns / 1ps
 
-module branch_unit_tb();
+module axi_interconnect_tb();
 
 endmodule

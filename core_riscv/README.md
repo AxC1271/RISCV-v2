@@ -31,11 +31,11 @@ Here's the structural RTL implementation of the RISC-V core:
 
 ```SystemVerilog
 module core_riscv (
-    input  logic        clk,
-    input  logic        rst_n,
+    input  logic clk,
+    input  logic rst_n,
     
-    // CPU control (from system)
-    input  logic        cpu_enable, // enable CPU execution (stall during boot)
+    // cpu control (from system)
+    input  logic cpu_enable, // discern boot vs. normal operation
     
     output logic [31:0] imem_addr, // addr to fetch from
     output logic        imem_req, // req signal

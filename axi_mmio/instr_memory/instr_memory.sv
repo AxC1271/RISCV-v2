@@ -38,7 +38,7 @@ module instr_memory # (
                 mem[11] = 32'hFE000FE3;
 
                 for (int i = 12; i < DEPTH; i++) begin
-                    mem[i] = 32'h00000013;
+                    mem[i] = 32'h00000013; // nop instructions
                 end
             end
         end else begin : gen_no_preload
