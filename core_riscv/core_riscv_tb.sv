@@ -171,15 +171,15 @@ module core_riscv_tb();
 
         $display("\n========== REGISTER FILE CHECKS ==========");
         check_reg(1,  32'h00000010, "ADDI x1=16");
-        check_reg(2,  32'd42,        "ADDI x2=42");
-        check_reg(3,  32'd100,       "ADDI x3=100");
+        check_reg(2,  32'd42, "ADDI x2=42");
+        check_reg(3,  32'd100, "ADDI x3=100");
         check_reg(4,  32'hFFFFFFFF, "ADDI x4=-1");
-        check_reg(5,  32'd42,        "LW x5=42");
-        check_reg(6,  32'd100,       "LW x6=100");
-        check_reg(7,  32'd142,       "ADD x7=142");
-        check_reg(8,  32'd58,        "SUB x8=58");
-        check_reg(9,  32'd32,        "AND x9=32");
-        check_reg(10, 32'd110,       "OR  x10=110");
+        check_reg(5,  32'd42, "LW x5=42");
+        check_reg(6,  32'd100, "LW x6=100");
+        check_reg(7,  32'd142, "ADD x7=142");
+        check_reg(8,  32'd58, "SUB x8=58");
+        check_reg(9,  32'd32, "AND x9=32");
+        check_reg(10, 32'd110, "OR x10=110");
         check_reg(11, 32'h00000600, "BEQ taken x11=0x600");
 
         $display("\n========== SUMMARY ==========");

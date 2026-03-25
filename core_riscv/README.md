@@ -5,7 +5,22 @@
 This is a single-core RISC-V core which performs pure computations, with:
 * Program Counter
 * Register File
-* 
+* Immediate Generator
+* Control Unit
+* Arithmetic Logic Unit
+* Data/Instruction Memory
+* Data/Instruction Caches
+* Hazard/Forwarding Unit
+* Branch Unit
+* Pipeline Registers
+
+The overall scope of this project is to implement a single-core processor that can interact with peripherals and be programmed using a serial Python transmitter. For the testbench of this core, we are verifying a couple of parameters:
+
+* Whether or not instructions write back correctly due to the pipeline
+* Checking for pipeline hazards (RAW hazards, load-use hazards)
+* Checking penalties for misses (ALU data hazards, branch penalties)
+
+We will run discrete testbenches that will specifically test for these edge cases. Compared to a single-cycle processor, it's essential that we check the handling of data hazards and measure average IPC across randomized loads to compare performance to my older project RISC-V v1. 
 
 
 ---
@@ -388,6 +403,111 @@ endmodule
 
 ---
 
+## Test Assembly Programs
+
+The first assembly program we will use will include a bunch of instructions that should trigger RAW hazards. We want to see if the writeback uses the correct value and that the CPU doesn't stall for the pipeline because of the forwarding logic.
+
+```asm
+# RAW hazard / forwarding test
+# Each instruction reads a register written by the immediately preceding instruction.
+# With correct EX->EX and MEM->EX forwarding, zero stalls should occur.
+
+_start:
+    addi  x1, x0, 10      # x1 = 10
+    addi  x2, x1, 5       # x2 = x1 + 5 = 15    (EX->EX forward on x1)
+    add   x3, x1, x2      # x3 = x1 + x2 = 25   (EX->EX on x2, MEM->EX on x1)
+    slli  x4, x3, 2       # x4 = x3 << 2 = 100  (EX->EX forward on x3)
+    sub   x5, x4, x1      # x5 = x4 - x1 = 90   (EX->EX on x4, MEM->EX on x1)
+    xor   x6, x5, x2      # x6 = x5 ^ x2 = 85   (EX->EX on x5, MEM->EX on x2)
+    or    x7, x6, x3      # x7 = x6 | x3 = 93   (EX->EX on x6, MEM->EX on x3)
+    and   x8, x7, x4      # x8 = x7 & x4 = 64   (EX->EX on x7, MEM->EX on x4)
+
+```
+
+The next assembly program checks for load-use hazards. We expect to see the pipeline stall for exactly one cycle (the data of a load instruction isn't available until the end of mem, forcing the next instruction to stall because you'll have to wait until the load data is actually available).
+
+```asm
+# Load-use hazard test
+# The instruction immediately after each lw uses the loaded register.
+# Hazard unit should stall the pipeline for exactly 1 cycle per load-use pair.
+
+# Setup: store values into memory first (assume memory pre-initialized, or use these stores)
+    addi  x1, x0, 100     # base address = 100
+    addi  x2, x0, 42      # value to store
+    sw    x2, 0(x1)        # mem[100] = 42
+    addi  x3, x0, 99
+    sw    x3, 4(x1)        # mem[104] = 99
+
+    lw    x4, 0(x1)        # x4 = mem[100] = 42  <-- load
+    add   x5, x4, x0       # x5 = x4 (LOAD-USE: stall 1 cycle)
+
+    lw    x6, 4(x1)        # x6 = mem[104] = 99  <-- load
+    sub   x7, x6, x4       # x7 = 99 - 42 = 57   (LOAD-USE: stall 1 cycle)
+```
+
+The third assembly program will check for branch penalties. We want to see the pipeline flush the IF/ID and ID/EX registers, which will stall the pipeline for 2 clock cycles.
+
+```asm
+# Branch penalty test
+# BEQ is taken (x1 == x1), causing a 2-cycle flush.
+# Verify that the instructions at PC+4 and PC+8 are squashed (become NOPs in waveform).
+
+    addi  x1, x0, 5       # x1 = 5
+    addi  x2, x0, 5       # x2 = 5
+    beq   x1, x2, target  # branch taken -> flush IF/ID, ID/EX
+    addi  x3, x0, 99      # SQUASHED (should appear as NOP in waveform)
+    addi  x4, x0, 88      # SQUASHED
+target:
+    addi  x5, x0, 1       # x5 = 1  (first instruction after branch resolves)
+    addi  x6, x0, 2       # x6 = 2
+```
+
+The last assembly program will run a random set of instructions (not necessarily random, but should simulate the expected workload of a functional program) and we will measure the IPC using two counters; the amount of instructions and the amount of clock cycles. Ideally, we should see a 5x throughput (due to `t_comb `being considerably lower) compared to a single-core processor.
+
+```asm
+# Mixed workload for IPC measurement
+# Includes ALU ops, loads/stores, branches, and a small loop.
+# Count cycles vs retired instructions for IPC.
+
+    addi  x1, x0, 0       # loop counter i = 0
+    addi  x2, x0, 8       # loop bound = 8
+    addi  x3, x0, 200     # base address for array
+
+loop:
+    slli  x4, x1, 2       # x4 = i * 4 (byte offset)
+    add   x5, x3, x4      # x5 = base + offset
+    lw    x6, 0(x5)        # x6 = array[i]
+    addi  x6, x6, 1       # x6++
+    sw    x6, 0(x5)        # array[i] = x6
+    addi  x1, x1, 1       # i++
+    blt   x1, x2, loop    # if i < 8, loop
+    
+    # post-loop: compute sum of first two elements
+    lw    x7, 0(x3)        # x7 = array[0]
+    lw    x8, 4(x3)        # x8 = array[1]
+    add   x9, x7, x8       # x9 = array[0] + array[1]
+```
+
+### Static Timing Analysis
+
+We will run synthesis/implementation later to determine the maximum clock frequency that we could hypothetically run the processor at. Recall that:
+
+Setup Condition:
+$$
+t_{clk} + t_{skew} \geq T_{cq} + T_{comb} + T_{setup}
+$$
+
+Hold Condition:
+$$
+t_{cq} + t_{comb} \geq t_{hold} + t_{skew}
+$$
+
+For FPGA tools like Xilinx (which I'll be using to synthesize), the hold condition is usually resolved by buffers being automatically inserted along the datapath if it's too fast. For our purposes, I would like to stress test this processor design by seeing the fastest clock frequency that our processor can handle before we start seeing negative setup slack. 
+
 ## Simulation + Waveform
+
+---
+
+## Timing Report
 
 ---
