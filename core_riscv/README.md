@@ -506,8 +506,28 @@ For FPGA tools like Xilinx (which I'll be using to synthesize), the hold conditi
 
 ## Simulation + Waveform
 
+First Workload: RAW Hazards
+
+```
+```
+
+Second Workload: Load-Use Hazards
+
+```
+```
+
+Third Workload: Branch Penalties
+
+```
+```
+
 ---
 
 ## Timing Report
+
+
+---
+
+## References
 
 ---
