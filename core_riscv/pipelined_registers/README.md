@@ -7,7 +7,7 @@ These pipeline registers elevate the design from a single-core processor to a mu
 Remember the setup time equation, as this governs the fastest your design can go at before failing timing:
 
 $$
-t_{clk} + t_{skew} \geq T_{cq} + T_{comb} + T_{setup}
+t_{clk} + t_{skew} \geq t_{cq} + t_{comb} + t_{setup}
 $$
 
 The issue we are most concerned with is the parameter $ t_{comb} $. In a single processor design, the only "registers" in your design are at the beginning and at the end of the pipeline, meaning that your design's critical path is the entire length of the pipeline. Take a load instruction for example: the load instruction goes from your program counter to instruction memory, to your register file and control unit, then to your ALU to calculate the address in memory, reads the data from that address in memory, before being muxed and finally written back to the register file. You need to allow enough time between clock cycles for that entire combinational path to finish (if your clock flips before the load instruction is finished, you'll have data corruption or in other words, a setup time violation). 
