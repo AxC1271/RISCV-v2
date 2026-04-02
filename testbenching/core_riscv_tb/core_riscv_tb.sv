@@ -63,8 +63,10 @@ module core_riscv_tb();
 
     initial begin
         for (int i = 0; i < IMEM_WORDS; i++)
-            imem[i] = 32'h00000013; // NOP (ADDI x0, x0, 0)
-        // load test programs later
+            imem[i] = 32'h00000013; // nop (addi x0, x0, 0)
+
+            // load test programs later, refer to python script
+
             imem['h000 >> 2] = 32'h00A00093; // addi x1, x0, 10      # x1 = 10
             imem['h004 >> 2] = 32'h00508113; // addi x2, x1, 5       # x2 = 15  (EX->EX on x1)
             imem['h008 >> 2] = 32'h002081B3; // add  x3, x1, x2      # x3 = 25  (EX->EX x2, MEM->EX x1)
@@ -73,6 +75,8 @@ module core_riscv_tb();
             imem['h014 >> 2] = 32'h0022C333; // xor  x6, x5, x2      # x6 = 85  (EX->EX x5, MEM->EX x2)
             imem['h018 >> 2] = 32'h003363B3; // or   x7, x6, x3      # x7 = 93  (EX->EX x6, MEM->EX x3)
             imem['h01C >> 2] = 32'h0043F433; // and  x8, x7, x4      # x8 = 64  (EX->EX x7, MEM->EX x4)
+
+            // end of test program
     end
 
     always_ff @(posedge clk) begin
@@ -168,14 +172,23 @@ module core_riscv_tb();
 
         // each instruction can cost: 5 pipeline stages + up to 2 cache
         // miss refill cycles (4 words x 1 cycle each = 4) + write-back
-        // (4 cycles) + done (1) + potential stall cycles.
-        // 20 instructions * ~20 cycles worst case = 400 cycles.
+        // (4 cycles) + done (1) + potential stall cycles
+        // 20 instructions * ~20 cycles worst case = 400 cycles
         // 600 gives comfortable headroom
 
         $display("\n[TB] CPU running...");
         repeat (600) @(posedge clk);
 
         // write specific checks here
+        check_reg( 1, 32'd10   , "addi x1=10");
+        check_reg( 2, 32'd15   , "addi x2=15");
+        check_reg( 3, 32'd25   , "add x3=25");
+        check_reg( 4, 32'd100  , "slli x4=100");
+        check_reg( 5, 32'd90   , "sub x5=90");
+        check_reg( 6, 32'd85   , "xor x6=85");
+        check_reg( 7, 32'd93   , "or x7=93");
+        check_reg( 8, 32'd64   , "and x8=64");
+        //
 
         if (fail_count == 0)
             $display("ALL TESTS PASSED");

@@ -65,6 +65,7 @@ module core_riscv_tb();
         for (int i = 0; i < IMEM_WORDS; i++)
             imem[i] = 32'h00000013; // NOP (ADDI x0, x0, 0)
         // load test programs later
+        // check /testbenching for more information
     end
 
     always_ff @(posedge clk) begin
@@ -177,7 +178,7 @@ module core_riscv_tb();
         $finish;
     end
 
-    // timeout watch dog
+    // timeout watchdog
     initial begin
         #100000;
         $display("[TIMEOUT] Simulation exceeded 100us -- possible hang");
