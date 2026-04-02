@@ -1,16 +1,13 @@
-# Load-use hazard test
-# The instruction immediately after each lw uses the loaded register.
-# Hazard unit should stall the pipeline for exactly 1 cycle per load-use pair.
+# RAW hazard / forwarding test
+# Each instruction reads a register written by the immediately preceding instruction.
+# With correct EX->EX and MEM->EX forwarding, zero stalls should occur.
 
-# Setup: store values into memory first (assume memory pre-initialized, or use these stores)
-    addi  x1, x0, 100     # base address = 100
-    addi  x2, x0, 42      # value to store
-    sw    x2, 0(x1)        # mem[100] = 42
-    addi  x3, x0, 99
-    sw    x3, 4(x1)        # mem[104] = 99
-
-    lw    x4, 0(x1)        # x4 = mem[100] = 42  <-- load
-    add   x5, x4, x0       # x5 = x4 (LOAD-USE: stall 1 cycle)
-
-    lw    x6, 4(x1)        # x6 = mem[104] = 99  <-- load
-    sub   x7, x6, x4       # x7 = 99 - 42 = 57   (LOAD-USE: stall 1 cycle)
+_start:
+    addi  x1, x0, 10      # x1 = 10
+    addi  x2, x1, 5       # x2 = x1 + 5 = 15    (EX->EX forward on x1)
+    add   x3, x1, x2      # x3 = x1 + x2 = 25   (EX->EX on x2, MEM->EX on x1)
+    slli  x4, x3, 2       # x4 = x3 << 2 = 100  (EX->EX forward on x3)
+    sub   x5, x4, x1      # x5 = x4 - x1 = 90   (EX->EX on x4, MEM->EX on x1)
+    xor   x6, x5, x2      # x6 = x5 ^ x2 = 85   (EX->EX on x5, MEM->EX on x2)
+    or    x7, x6, x3      # x7 = x6 | x3 = 93   (EX->EX on x6, MEM->EX on x3)
+    and   x8, x7, x4      # x8 = x7 & x4 = 64   (EX->EX on x7, MEM->EX on x4)

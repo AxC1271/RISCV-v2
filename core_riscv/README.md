@@ -421,7 +421,6 @@ _start:
     xor   x6, x5, x2      # x6 = x5 ^ x2 = 85   (EX->EX on x5, MEM->EX on x2)
     or    x7, x6, x3      # x7 = x6 | x3 = 93   (EX->EX on x6, MEM->EX on x3)
     and   x8, x7, x4      # x8 = x7 & x4 = 64   (EX->EX on x7, MEM->EX on x4)
-
 ```
 
 The next assembly program checks for load-use hazards. We expect to see the pipeline stall for exactly one cycle (the data of a load instruction isn't available until the end of mem, forcing the next instruction to stall because you'll have to wait until the load data is actually available).
