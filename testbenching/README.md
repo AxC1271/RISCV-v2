@@ -18,6 +18,8 @@ iverilog -g2012 -o hello_world -c files.txt
 
 In both cases, you will generate a `.vvp` file called `hello_world` (or any name you prefer). 
 
+---
+
 ## Run Simulation
 
 Having just generated that `hello_world.vvp` file, just use the vvp runetime engine to execute the compiled file:
@@ -26,7 +28,10 @@ Having just generated that `hello_world.vvp` file, just use the vvp runetime eng
 vvp hello_world
 ```
 
+---
+
 ## Test Load Program
 
 Use the Python script `riscv_asm.py` in the **python_scripts** folder to turn RISC-V instructions into the binaries needed for testbenching metrics.
 
+---
