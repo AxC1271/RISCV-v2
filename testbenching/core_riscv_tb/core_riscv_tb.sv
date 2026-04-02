@@ -65,6 +65,14 @@ module core_riscv_tb();
         for (int i = 0; i < IMEM_WORDS; i++)
             imem[i] = 32'h00000013; // NOP (ADDI x0, x0, 0)
         // load test programs later
+            imem['h000 >> 2] = 32'h00A00093; // addi x1, x0, 10      # x1 = 10
+            imem['h004 >> 2] = 32'h00508113; // addi x2, x1, 5       # x2 = 15  (EX->EX on x1)
+            imem['h008 >> 2] = 32'h002081B3; // add  x3, x1, x2      # x3 = 25  (EX->EX x2, MEM->EX x1)
+            imem['h00C >> 2] = 32'h00219213; // slli x4, x3, 2       # x4 = 100 (EX->EX on x3)
+            imem['h010 >> 2] = 32'h401202B3; // sub  x5, x4, x1      # x5 = 90  (EX->EX x4, MEM->EX x1)
+            imem['h014 >> 2] = 32'h0022C333; // xor  x6, x5, x2      # x6 = 85  (EX->EX x5, MEM->EX x2)
+            imem['h018 >> 2] = 32'h003363B3; // or   x7, x6, x3      # x7 = 93  (EX->EX x6, MEM->EX x3)
+            imem['h01C >> 2] = 32'h0043F433; // and  x8, x7, x4      # x8 = 64  (EX->EX x7, MEM->EX x4)
     end
 
     always_ff @(posedge clk) begin

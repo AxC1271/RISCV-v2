@@ -28,9 +28,5 @@ vvp hello_world
 
 ## Test Load Program
 
-Use the following Python script `converter.py` to turn RISC-V instructions into the binaries needed for testbenching metrics.
+Use the Python script `riscv_asm.py` in the **python_scripts** folder to turn RISC-V instructions into the binaries needed for testbenching metrics.
 
-```Python
-    def convert_riscv():
-
-```
