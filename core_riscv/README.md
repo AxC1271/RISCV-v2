@@ -407,7 +407,7 @@ endmodule
 
 The first assembly program we will use will include a bunch of instructions that should trigger RAW hazards. We want to see if the writeback uses the correct value and that the CPU doesn't stall for the pipeline because of the forwarding logic.
 
-```asm
+```s
 # RAW hazard / forwarding test
 # Each instruction reads a register written by the immediately preceding instruction.
 # With correct EX->EX and MEM->EX forwarding, zero stalls should occur.
@@ -426,7 +426,7 @@ _start:
 
 The next assembly program checks for load-use hazards. We expect to see the pipeline stall for exactly one cycle (the data of a load instruction isn't available until the end of mem, forcing the next instruction to stall because you'll have to wait until the load data is actually available).
 
-```asm
+```s
 # Load-use hazard test
 # The instruction immediately after each lw uses the loaded register.
 # Hazard unit should stall the pipeline for exactly 1 cycle per load-use pair.
@@ -447,7 +447,7 @@ The next assembly program checks for load-use hazards. We expect to see the pipe
 
 The third assembly program will check for branch penalties. We want to see the pipeline flush the IF/ID and ID/EX registers, which will stall the pipeline for 2 clock cycles.
 
-```asm
+```s
 # Branch penalty test
 # BEQ is taken (x1 == x1), causing a 2-cycle flush.
 # Verify that the instructions at PC+4 and PC+8 are squashed (become NOPs in waveform).
@@ -464,7 +464,7 @@ target:
 
 The last assembly program will run a random set of instructions (not necessarily random, but should simulate the expected workload of a functional program) and we will measure the IPC using two counters; the amount of instructions and the amount of clock cycles. Ideally, we should see a 5x throughput (due to `t_comb `being considerably lower) compared to a single-core processor.
 
-```asm
+```s
 # Mixed workload for IPC measurement
 # Includes ALU ops, loads/stores, branches, and a small loop.
 # Count cycles vs retired instructions for IPC.
