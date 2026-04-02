@@ -1,14 +1,12 @@
 `timescale 1ns / 1ps
 
 module ifid_register (
-    input  logic        clk,
-    input  logic        rst_n,
-    input  logic        stall,      // from hazard unit
-    input  logic        flush,      // from branch unit
-    
-    input  logic [31:0] if_pc,
-    input  logic [31:0] if_instruction,
-    
+    input logic clk,
+    input logic rst_n,
+    input logic stall, // from hazard unit
+    input logic flush, // from branch unit
+    input logic [31:0] if_pc,
+    input logic [31:0] if_instruction,
     output logic [31:0] id_pc,
     output logic [31:0] id_instruction
 );

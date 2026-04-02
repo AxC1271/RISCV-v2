@@ -4,9 +4,9 @@ module branch_unit (
     // operands (from register file)
     input logic [31:0] rs1_data,
     input logic [31:0] rs2_data,
-    input logic is_branch,          
+    input logic branch,          
     input logic [2:0] funct3, // branch type
-    
+
     // curr pc and target
     input logic [31:0] pc,
     input logic [31:0] imm, // branch offset
@@ -31,7 +31,7 @@ module branch_unit (
         endcase
     end
     
-    assign branch_taken = is_branch && condition_met;
+    assign branch_taken = branch && condition_met;
     assign branch_target = pc + imm;
 
 endmodule

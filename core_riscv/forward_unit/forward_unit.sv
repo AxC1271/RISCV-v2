@@ -13,8 +13,8 @@ module forward_unit (
     input logic [4:0] wb_rd,         
     input logic wb_reg_write,       
     
-    output logic [1:0] forward_a,    // forward for rs1
-    output logic [1:0] forward_b     // forward for rs2
+    output logic [1:0] forward_a, // forward for rs1
+    output logic [1:0] forward_b  // forward for rs2
 );
 
     // forward A (for rs1)
