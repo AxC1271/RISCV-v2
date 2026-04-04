@@ -95,19 +95,9 @@ module core_riscv (
 
     logic fetch_stall;
     logic mem_stall;
-    logic dcache_done;
-
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n)
-            dcache_done <= 1'b0;
-        else if (dcache_ready)
-            dcache_done <= 1'b1;                        
-        else if (!mem_mem_read && !mem_mem_write)
-            dcache_done <= 1'b0;                        
-    end
 
     assign fetch_stall = cpu_enable && !icache_cpu_ready;
-    assign mem_stall   = (mem_mem_read || mem_mem_write) && !dcache_ready && !dcache_done;
+    assign mem_stall   = (mem_mem_read || mem_mem_write) && !dcache_ready;
 
     instr_cache icache (
         .clk(clk),
@@ -323,8 +313,8 @@ module core_riscv (
 
     assign dcache_addr = mem_alu_result;
     assign dcache_wr_data = mem_rs2_data;
-    assign dcache_rd_en = mem_mem_read  && !dcache_ready && !dcache_done;
-    assign dcache_wr_en = mem_mem_write && !dcache_ready && !dcache_done;
+    assign dcache_rd_en = mem_mem_read;
+    assign dcache_wr_en = mem_mem_write;
     assign dmem_size = 3'b010;
 
     memwb_register memwb (

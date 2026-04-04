@@ -213,10 +213,7 @@ module data_cache # (
                 end
                 DONE: begin
                     ready <= 1'b1;
-                    if (!(rd_en || wr_en))
-                        state <= IDLE;
-                    else
-                        state <= DONE;
+                    state <= IDLE;
                 end
                 default: state <= IDLE;
             endcase

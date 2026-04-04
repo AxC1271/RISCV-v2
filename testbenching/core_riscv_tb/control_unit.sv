@@ -72,7 +72,23 @@ module control_unit (
             OP_I_ARITH: begin
                 RegWrite = 1'b1;
                 ALUSrc   = 1'b1;
-                ALUCont  = ALU_ADD; 
+                case (funct3)
+                    3'b000: ALUCont = ALU_ADD;  // addi
+                    3'b111: ALUCont = ALU_AND;  // andi
+                    3'b110: ALUCont = ALU_OR;   // ori
+                    3'b100: ALUCont = ALU_XOR;  // xori
+                    3'b010: ALUCont = 4'b0010;  // slti
+                    3'b011: ALUCont = 4'b0011;  // sltiu
+                    3'b001: ALUCont = 4'b0001;  // slli (funct7=0000000)
+                    3'b101: begin
+                        // srli vs srai distinguished by funct7[5]
+                        if (funct7[5])
+                            ALUCont = 4'b1101;  // srai
+                        else
+                            ALUCont = 4'b0101;  // srli
+                    end
+                    default: ALUCont = ALU_ADD;
+                endcase
             end
 
             OP_LOAD: begin
