@@ -7,6 +7,7 @@
 // now supports separate 
 // programmable bootloader 
 // as slave device
+
 module axilite_interconnect (
     input logic clk,
     input logic rst_n,

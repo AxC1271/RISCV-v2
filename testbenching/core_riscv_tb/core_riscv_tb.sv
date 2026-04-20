@@ -75,6 +75,16 @@ module core_riscv_tb();
         imem['h020 >> 2] = 32'h404303B3; // sub  x7, x6, x4     # x7 = 57 
     end
 
+    // x1 = 100
+    // x2 = 42
+    // 
+    // 
+    //
+    // 
+    //
+    //
+    //
+
     // combinational read — data valid same cycle as req
     assign imem_rdata = imem_req ? imem[imem_addr[31:2]] : 32'h00000013;
 
@@ -195,16 +205,16 @@ module core_riscv_tb();
     end
 
 
-    // initial begin
-    //     @(posedge rst_n);
-    //     forever begin
-    //         @(posedge clk);
-    //         $display("[T=%0t] PC=%08h INSTR=%08h icache_state=%0d icache_ready=%b hit=%b addr_idx=%02h addr_off=%01h hit_data=%08h",
-    //                  $time, debug_pc, debug_instr,
-    //                  dut.icache.state, dut.icache.cpu_ready,
-    //                  dut.icache.hit, dut.icache.addr_index, dut.icache.addr_offset,
-    //                  dut.icache.hit_data_r);
-    //     end
-    // end
+    initial begin
+        @(posedge rst_n);
+        forever begin
+            @(posedge clk);
+            $display("[T=%0t] PC=%08h INSTR=%08h icache_state=%0d icache_ready=%b hit=%b addr_idx=%02h addr_off=%01h hit_data=%08h",
+                     $time, debug_pc, debug_instr,
+                     dut.icache.state, dut.icache.cpu_ready,
+                     dut.icache.hit, dut.icache.addr_index, dut.icache.addr_offset,
+                     dut.icache.hit_data_r);
+        end
+    end
 
 endmodule

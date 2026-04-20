@@ -45,7 +45,7 @@ The memory and datapaths will be instantiated separately from the `RISC-V core` 
 
 ## Video Demo
 
-As of April 2nd, 2026, I'm testbenching the RISC-V core and working on the AXI-Lite implementation. I'm aiming on recording a video demo which shows the SoC doing some basic UART as well as reading data from a temperature sensor using SPI before sending a serial stream of instructions using Python to program the FPGA as if it were a microcontroller.
+As of April 17th, 2026, I'm testbenching the RISC-V core and working on the AXI-Lite implementation. I'm aiming on recording a video demo which shows the SoC doing some basic UART as well as reading data from a temperature sensor using SPI before sending a serial stream of instructions using Python to program the FPGA as if it were a microcontroller.
 
 ---
 
