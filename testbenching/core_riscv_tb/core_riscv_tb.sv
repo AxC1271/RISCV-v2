@@ -170,12 +170,39 @@ module core_riscv_tb();
     endtask
 
     task automatic check_dmem (
-        input logic [31:0]  byte_addr,
-        input logic [31:0]  expected,
-        input string        label
+        input logic [31:0] byte_addr,
+        input logic [31:0] expected,
+        input string       label
     );
+        logic [20:0] chk_tag;
+        logic [6:0]  chk_set;
+        logic [1:0]  chk_woff;
         logic [31:0] got;
-        got = dmem[byte_addr[31:2]];
+        logic        found;
+    
+        chk_tag  = byte_addr[31:11];
+        chk_set  = byte_addr[10:4];
+        chk_woff = byte_addr[3:2];
+        found    = 1'b0;
+    
+        // check way 0
+        if (dut.dcache.valid_array[chk_set][0] &&
+            dut.dcache.tag_array[chk_set][0] == chk_tag) begin
+            got   = dut.dcache.data_array[chk_set][0][chk_woff];
+            found = 1'b1;
+        end
+        // check way 1
+        else if (dut.dcache.valid_array[chk_set][1] &&
+                 dut.dcache.tag_array[chk_set][1] == chk_tag) begin
+            got   = dut.dcache.data_array[chk_set][1][chk_woff];
+            found = 1'b1;
+        end
+        // not in cache -- fall back to backing store
+        else begin
+            got   = dmem[byte_addr[31:2]];
+            found = 1'b1;
+        end
+    
         if (got === expected) begin
             $display("  PASS  %-20s  dmem[0x%08h] = 0x%08h",
                      label, byte_addr, got);
