@@ -76,24 +76,24 @@ module core_riscv_tb();
         // imem['h01C >> 2] = 32'h0043F433; // and  x8, x7, x4      # x8 = 68   EX->EX x7, MEM->EX x4  (93&100=68)
 
         // 2. test for load-use hazards and pipeline stalls in the risc-v processor
-        // imem['h000 >> 2] = 32'h06400093; // addi x1, x0, 100    # base = 100
-        // imem['h004 >> 2] = 32'h02A00113; // addi x2, x0, 42     # val = 42
-        // imem['h008 >> 2] = 32'h0020A023; // sw   x2, 0(x1)      # mem[100] = 42
-        // imem['h00C >> 2] = 32'h06300193; // addi x3, x0, 99     # val = 99
-        // imem['h010 >> 2] = 32'h0030A223; // sw   x3, 4(x1)      # mem[104] = 99
-        // imem['h014 >> 2] = 32'h0000A203; // lw   x4, 0(x1)      # x4 = 42   <load>
-        // imem['h018 >> 2] = 32'h000202B3; // add  x5, x4, x0     # x5 = x4   LOAD-USE stall
-        // imem['h01C >> 2] = 32'h0040A303; // lw   x6, 4(x1)      # x6 = 99   <load>
-        // imem['h020 >> 2] = 32'h404303B3; // sub  x7, x6, x4     # x7 = 57 
+        imem['h000 >> 2] = 32'h06400093; // addi x1, x0, 100    # base = 100
+        imem['h004 >> 2] = 32'h02A00113; // addi x2, x0, 42     # val = 42
+        imem['h008 >> 2] = 32'h0020A023; // sw   x2, 0(x1)      # mem[100] = 42
+        imem['h00C >> 2] = 32'h06300193; // addi x3, x0, 99     # val = 99
+        imem['h010 >> 2] = 32'h0030A223; // sw   x3, 4(x1)      # mem[104] = 99
+        imem['h014 >> 2] = 32'h0000A203; // lw   x4, 0(x1)      # x4 = 42   <load>
+        imem['h018 >> 2] = 32'h000202B3; // add  x5, x4, x0     # x5 = x4   LOAD-USE stall
+        imem['h01C >> 2] = 32'h0040A303; // lw   x6, 4(x1)      # x6 = 99   <load>
+        imem['h020 >> 2] = 32'h404303B3; // sub  x7, x6, x4     # x7 = 57 
 
         // 3. test for branch penalties in this workload
-        imem['h000 >> 2] = 32'h00500093; // addi x1, x0, 5      # x1 = 5
-        imem['h004 >> 2] = 32'h00500113; // addi x2, x0, 5      # x2 = 5
-        imem['h008 >> 2] = 32'h00208663; // beq  x1, x2, +12    # taken -> flush 2 instrs
-        imem['h00C >> 2] = 32'h06300193; // addi x3, x0, 99     # SQUASHED
-        imem['h010 >> 2] = 32'h05800213; // addi x4, x0, 88     # SQUASHED
-        imem['h014 >> 2] = 32'h00100293; // addi x5, x0, 1      # x5 = 1  (branch target)
-        imem['h018 >> 2] = 32'h00200313; // addi x6, x0, 2      # x6 = 2
+        // imem['h000 >> 2] = 32'h00500093; // addi x1, x0, 5      # x1 = 5
+        // imem['h004 >> 2] = 32'h00500113; // addi x2, x0, 5      # x2 = 5
+        // imem['h008 >> 2] = 32'h00208663; // beq  x1, x2, +12    # taken -> flush 2 instrs
+        // imem['h00C >> 2] = 32'h06300193; // addi x3, x0, 99     # SQUASHED
+        // imem['h010 >> 2] = 32'h05800213; // addi x4, x0, 88     # SQUASHED
+        // imem['h014 >> 2] = 32'h00100293; // addi x5, x0, 1      # x5 = 1  (branch target)
+        // imem['h018 >> 2] = 32'h00200313; // addi x6, x0, 2      # x6 = 2
 
         // 4. randomized distributed workload for risc-v processor
         // imem['h000 >> 2] = 32'h00000093; // addi x1, x0, 0      # i = 0
@@ -215,20 +215,20 @@ module core_riscv_tb();
         // check_reg( 8, 32'd68   , "and x8=68");
 
         // 2. testbench check for the load use hazard
-        // check_reg( 4, 32'd42   , "lw x4=42");
-        // check_reg( 5, 32'd42   , "add x5=42");
-        // check_reg( 6, 32'd99   , "lw x6=99");
-        // check_reg( 7, 32'd57   , "sub x7=57");
-        // check_dmem(32'h00000064, 32'd42,  "sw x2->mem[100]");
-        // check_dmem(32'h00000068, 32'd99,  "sw x3->mem[104]");
+        check_reg( 4, 32'd42   , "lw x4=42");
+        check_reg( 5, 32'd42   , "add x5=42");
+        check_reg( 6, 32'd99   , "lw x6=99");
+        check_reg( 7, 32'd57   , "sub x7=57");
+        check_dmem(32'h00000064, 32'd42,  "sw x2->mem[100]");
+        check_dmem(32'h00000068, 32'd99,  "sw x3->mem[104]");
 
         // 3. testbench check for branch penalties/squash
-        check_reg( 1, 32'd5    , "addi x1=5");
-        check_reg( 2, 32'd5    , "addi x2=5");
-        check_reg( 3, 32'd0    , "x3 squashed=0");
-        check_reg( 4, 32'd0    , "x4 squashed=0");
-        check_reg( 5, 32'd1    , "addi x5=1");
-        check_reg( 6, 32'd2    , "addi x6=2");
+        // check_reg( 1, 32'd5    , "addi x1=5");
+        // check_reg( 2, 32'd5    , "addi x2=5");
+        // check_reg( 3, 32'd0    , "x3 squashed=0");
+        // check_reg( 4, 32'd0    , "x4 squashed=0");
+        // check_reg( 5, 32'd1    , "addi x5=1");
+        // check_reg( 6, 32'd2    , "addi x6=2");
 
         // 4. testbench check for randomized distributed workload on risc-v processor
         // check_reg( 7, 32'd1    , "lw x7=1");

@@ -102,6 +102,24 @@ target:
     addi  x6, x0, 2       # x6 = 2
 ```
 
+Terminal Output (Icarus Verilog):
+```
+(.venv) achen1228@Andrews-MacBook-Pro-12 core_riscv_tb % vvp riscv_sim
+
+[TB] CPU running...
+  PASS  addi x1=5             x1                    = 0x00000005
+  PASS  addi x2=5             x2                    = 0x00000005
+  PASS  x3 squashed=0         x3                    = 0x00000000
+  PASS  x4 squashed=0         x4                    = 0x00000000
+  PASS  addi x5=1             x5                    = 0x00000001
+  PASS  addi x6=2             x6                    = 0x00000002
+
+========== SUMMARY ==========
+PASS: 6   FAIL: 0   TOTAL: 6
+ALL TESTS PASSED
+core_riscv_tb.sv:255: $finish called at 6065000 (1ps)
+```
+
 The last assembly program will run a random set of instructions (not necessarily random, but should simulate the expected workload of a functional program) and we will measure the IPC using two counters; the amount of instructions and the amount of clock cycles. Ideally, we should see a 5x throughput (due to `t_comb `being considerably lower) compared to a single-core processor.
 
 ```s

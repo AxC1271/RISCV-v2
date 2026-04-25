@@ -3,17 +3,13 @@
 module core_riscv (
     input logic clk,
     input logic rst_n,
-
-    // distinguish between boot and normal op
     input logic cpu_enable,
 
-    // imem pins
     output logic [31:0] imem_addr,
     output logic imem_req,
     input  logic [31:0] imem_rdata,
     input  logic imem_ready,
 
-    // dmem pins
     output logic [31:0] dmem_addr,
     output logic [31:0] dmem_wdata,
     output logic dmem_rd_en,
@@ -22,7 +18,6 @@ module core_riscv (
     input logic [31:0] dmem_rdata,
     input logic dmem_ready,
 
-    // for visual debug
     output logic [31:0] debug_pc,
     output logic [31:0] debug_instr,
     output logic [31:0] debug_reg_data,
@@ -37,33 +32,33 @@ module core_riscv (
 
     // ex stage
     logic [31:0] ex_rs1_data, ex_rs2_data, ex_immediate;
-    logic [4:0] ex_rs1, ex_rs2, ex_rd;
-    logic [3:0] ex_alu_op;
-    logic ex_alu_src, ex_mem_read, ex_mem_write;
-    logic ex_reg_write, ex_mem_to_reg;
+    logic [4:0]  ex_rs1, ex_rs2, ex_rd;
+    logic [3:0]  ex_alu_op;
+    logic        ex_alu_src, ex_mem_read, ex_mem_write;
+    logic        ex_reg_write, ex_mem_to_reg;
 
     // mem stage
     logic [31:0] mem_alu_result, mem_rs2_data;
-    logic [4:0] mem_rd;
-    logic mem_zero_flag;
-    logic mem_mem_read, mem_mem_write;
-    logic mem_reg_write, mem_mem_to_reg;
+    logic [4:0]  mem_rd;
+    logic        mem_zero_flag;
+    logic        mem_mem_read, mem_mem_write;
+    logic        mem_reg_write, mem_mem_to_reg;
 
     // writeback stage
     logic [31:0] wb_alu_result, wb_read_data;
-    logic [4:0] wb_rd;
-    logic wb_reg_write, wb_mem_to_reg;
-    
+    logic [4:0]  wb_rd;
+    logic        wb_reg_write, wb_mem_to_reg;
+
     // register file signals
     logic [31:0] rf_rs1_data, rf_rs2_data;
     logic [31:0] rf_wr_data;
-    logic [4:0] rf_wr_addr;
-    logic rf_wr_en;
+    logic [4:0]  rf_wr_addr;
+    logic        rf_wr_en;
 
     // alu signals
     logic [31:0] alu_a, alu_b, alu_result;
-    logic [3:0] id_alu_op;
-    logic alu_zero;
+    logic [3:0]  id_alu_op;
+    logic        alu_zero;
 
     // control unit signals
     logic reg_write, mem_read, mem_write;
@@ -75,23 +70,23 @@ module core_riscv (
     logic [1:0] forward_a, forward_b;
 
     // branch unit signals
-    logic branch_taken;
+    logic        branch_taken;
     logic [31:0] branch_target;
     logic [31:0] immediate;
 
     // i-cache signals
     logic [31:0] icache_cpu_addr;
-    logic icache_cpu_req;
+    logic        icache_cpu_req;
     logic [31:0] icache_cpu_rdata;
-    logic icache_cpu_ready;
+    logic        icache_cpu_ready;
 
     // d-cache signals
     logic [31:0] dcache_addr;
     logic [31:0] dcache_wr_data;
-    logic dcache_rd_en;
-    logic dcache_wr_en;
+    logic        dcache_rd_en;
+    logic        dcache_wr_en;
     logic [31:0] dcache_rd_data;
-    logic dcache_ready;
+    logic        dcache_ready;
 
     logic fetch_stall;
     logic mem_stall;
@@ -149,14 +144,47 @@ module core_riscv (
 
     assign icache_cpu_addr = pc_current;
     assign icache_cpu_req  = cpu_enable;
-    assign if_instr = icache_cpu_rdata;
-    assign if_pc = pc_current;
+
+    // fetch_pc_r: captures the PC at the moment each fetch request
+    // is issued, so when the icache responds we pair the instruction
+    // data with the correct PC regardless of how many cycles the
+    // miss took
+    logic [31:0] fetch_pc_r;
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
+            fetch_pc_r <= 32'h0;
+        else if (!fetch_stall && !stall && !mem_stall)
+            fetch_pc_r <= pc_current;
+    end
+
+    // IF stage registers: latch pc and instruction together only
+    // when the icache signals a valid result, using fetch_pc_r so
+    // the PC matches the request that produced this instruction
+    logic [31:0] if_pc_r;
+    logic [31:0] if_instr_r;
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            if_pc_r    <= 32'h0;
+            if_instr_r <= 32'h00000013;
+        end else if (branch_taken) begin
+            if_pc_r    <= 32'h0;
+            if_instr_r <= 32'h00000013;
+        end else if (icache_cpu_ready && !stall && !mem_stall) begin
+            if_pc_r    <= fetch_pc_r;
+            if_instr_r <= icache_cpu_rdata;
+        end
+    end
+
+    assign if_pc    = if_pc_r;
+    assign if_instr = if_instr_r;
 
     ifid_register ifid (
         .clk(clk),
         .rst_n(rst_n),
         .stall(fetch_stall || stall || mem_stall),
-        .flush(flush),
+        .flush(flush || branch_taken),
         .if_pc(if_pc),
         .if_instruction(if_instr),
         .id_pc(id_pc),
@@ -218,7 +246,7 @@ module core_riscv (
     idex_register idex (
         .clk(clk),
         .rst_n(rst_n),
-        .flush(flush),
+        .flush(flush || branch_taken),
         .stall(mem_stall),
         .id_pc(id_pc),
         .id_rs1_data(rf_rs1_data),
@@ -311,11 +339,11 @@ module core_riscv (
         .mem_mem_to_reg(mem_mem_to_reg)
     );
 
-    assign dcache_addr = mem_alu_result;
+    assign dcache_addr    = mem_alu_result;
     assign dcache_wr_data = mem_rs2_data;
-    assign dcache_rd_en = mem_mem_read;
-    assign dcache_wr_en = mem_mem_write;
-    assign dmem_size = 3'b010;
+    assign dcache_rd_en   = mem_mem_read;
+    assign dcache_wr_en   = mem_mem_write;
+    assign dmem_size      = 3'b010;
 
     memwb_register memwb (
         .clk(clk),
@@ -329,18 +357,17 @@ module core_riscv (
         .wb_alu_result(wb_alu_result),
         .wb_read_data(wb_read_data),
         .wb_rd(wb_rd),
-
         .wb_reg_write(wb_reg_write),
         .wb_mem_to_reg(wb_mem_to_reg)
     );
 
     assign rf_wr_data = wb_mem_to_reg ? wb_read_data : wb_alu_result;
     assign rf_wr_addr = wb_rd;
-    assign rf_wr_en = wb_reg_write && cpu_enable;
+    assign rf_wr_en   = wb_reg_write && cpu_enable;
 
-    assign debug_pc = pc_current;
-    assign debug_instr = id_instr;
+    assign debug_pc       = pc_current;
+    assign debug_instr    = id_instr;
     assign debug_reg_data = rf_rs1_data;
-    assign debug_halted = !cpu_enable;
+    assign debug_halted   = !cpu_enable;
 
 endmodule
