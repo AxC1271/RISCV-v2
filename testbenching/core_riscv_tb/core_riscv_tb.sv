@@ -290,15 +290,33 @@ module core_riscv_tb();
     end
 
 
+    // initial begin
+    //     @(posedge rst_n);
+    //     forever begin
+    //         @(posedge clk);
+    //         $display("[T=%0t] PC=%08h INSTR=%08h icache_state=%0d icache_ready=%b hit=%b addr_idx=%02h addr_off=%01h hit_data=%08h",
+    //                  $time, debug_pc, debug_instr,
+    //                  dut.icache.state, dut.icache.cpu_ready,
+    //                  dut.icache.hit, dut.icache.addr_index, dut.icache.addr_offset,
+    //                  dut.icache.hit_data_r);
+    //     end
+    // end
+    // combined icache + dcache monitor — only print when something
+    // interesting is happening on the dcache side
     initial begin
         @(posedge rst_n);
         forever begin
             @(posedge clk);
-            $display("[T=%0t] PC=%08h INSTR=%08h icache_state=%0d icache_ready=%b hit=%b addr_idx=%02h addr_off=%01h hit_data=%08h",
-                     $time, debug_pc, debug_instr,
-                     dut.icache.state, dut.icache.cpu_ready,
-                     dut.icache.hit, dut.icache.addr_index, dut.icache.addr_offset,
-                     dut.icache.hit_data_r);
+            $display("[T=%0t] PC=%08h INSTR=%08h | dcache: addr=%08h wr_en=%b rd_en=%b wr_data=%08h ready=%b state=%0d | mem_stall=%b",
+                     $time,
+                     debug_pc, debug_instr,
+                     dut.dcache.addr,
+                     dut.dcache.wr_en,
+                     dut.dcache.rd_en,
+                     dut.dcache.wr_data,
+                     dut.dcache.ready,
+                     dut.dcache.state,
+                     dut.mem_stall);
         end
     end
 
