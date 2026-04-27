@@ -75,7 +75,7 @@ module core_riscv_tb();
         // imem['h018 >> 2] = 32'h003363B3; // or   x7, x6, x3      # x7 = 93   EX->EX x6, MEM->EX x3
         // imem['h01C >> 2] = 32'h0043F433; // and  x8, x7, x4      # x8 = 68   EX->EX x7, MEM->EX x4  (93&100=68)
 
-        // 2. test for load-use hazards and pipeline stalls in the risc-v processor
+        // // 2. test for load-use hazards and pipeline stalls in the risc-v processor
         imem['h000 >> 2] = 32'h06400093; // addi x1, x0, 100    # base = 100
         imem['h004 >> 2] = 32'h02A00113; // addi x2, x0, 42     # val = 42
         imem['h008 >> 2] = 32'h0020A023; // sw   x2, 0(x1)      # mem[100] = 42
@@ -303,21 +303,21 @@ module core_riscv_tb();
     // end
     // combined icache + dcache monitor — only print when something
     // interesting is happening on the dcache side
-    initial begin
-        @(posedge rst_n);
-        forever begin
-            @(posedge clk);
-            $display("[T=%0t] PC=%08h INSTR=%08h | dcache: addr=%08h wr_en=%b rd_en=%b wr_data=%08h ready=%b state=%0d | mem_stall=%b",
-                     $time,
-                     debug_pc, debug_instr,
-                     dut.dcache.addr,
-                     dut.dcache.wr_en,
-                     dut.dcache.rd_en,
-                     dut.dcache.wr_data,
-                     dut.dcache.ready,
-                     dut.dcache.state,
-                     dut.mem_stall);
-        end
-    end
+    // initial begin
+    //     @(posedge rst_n);
+    //     forever begin
+    //         @(posedge clk);
+    //         $display("[T=%0t] PC=%08h INSTR=%08h | dcache: addr=%08h wr_en=%b rd_en=%b wr_data=%08h ready=%b state=%0d | mem_stall=%b",
+    //                  $time,
+    //                  debug_pc, debug_instr,
+    //                  dut.dcache.addr,
+    //                  dut.dcache.wr_en,
+    //                  dut.dcache.rd_en,
+    //                  dut.dcache.wr_data,
+    //                  dut.dcache.ready,
+    //                  dut.dcache.state,
+    //                  dut.mem_stall);
+    //     end
+    // end
 
 endmodule

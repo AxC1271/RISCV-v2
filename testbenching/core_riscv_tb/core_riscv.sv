@@ -171,7 +171,7 @@ module core_riscv (
         end else if (branch_taken) begin
             if_pc_r    <= 32'h0;
             if_instr_r <= 32'h00000013;
-        end else if (icache_cpu_ready && !stall && !mem_stall) begin
+        end else if (icache_cpu_ready && !stall && !mem_stall && !fetch_stall) begin
             if_pc_r    <= fetch_pc_r;
             if_instr_r <= icache_cpu_rdata;
         end
