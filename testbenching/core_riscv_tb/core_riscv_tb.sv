@@ -73,15 +73,15 @@ module core_riscv_tb();
         // imem['h01C >> 2] = 32'h0043F433; // and  x8, x7, x4      # x8 = 68   EX->EX x7, MEM->EX x4
 
         // 2. test for load-use hazards and pipeline stalls
-        imem['h000 >> 2] = 32'h06400093; // addi x1, x0, 100    # base = 100
-        imem['h004 >> 2] = 32'h02A00113; // addi x2, x0, 42     # val = 42
-        imem['h008 >> 2] = 32'h0020A023; // sw   x2, 0(x1)      # mem[100] = 42
-        imem['h00C >> 2] = 32'h06300193; // addi x3, x0, 99     # val = 99
-        imem['h010 >> 2] = 32'h0030A223; // sw   x3, 4(x1)      # mem[104] = 99
-        imem['h014 >> 2] = 32'h0000A203; // lw   x4, 0(x1)      # x4 = 42
-        imem['h018 >> 2] = 32'h000202B3; // add  x5, x4, x0     # x5 = x4  (load-use stall)
-        imem['h01C >> 2] = 32'h0040A303; // lw   x6, 4(x1)      # x6 = 99
-        imem['h020 >> 2] = 32'h404303B3; // sub  x7, x6, x4     # x7 = 57
+        // imem['h000 >> 2] = 32'h06400093; // addi x1, x0, 100    # base = 100
+        // imem['h004 >> 2] = 32'h02A00113; // addi x2, x0, 42     # val = 42
+        // imem['h008 >> 2] = 32'h0020A023; // sw   x2, 0(x1)      # mem[100] = 42
+        // imem['h00C >> 2] = 32'h06300193; // addi x3, x0, 99     # val = 99
+        // imem['h010 >> 2] = 32'h0030A223; // sw   x3, 4(x1)      # mem[104] = 99
+        // imem['h014 >> 2] = 32'h0000A203; // lw   x4, 0(x1)      # x4 = 42
+        // imem['h018 >> 2] = 32'h000202B3; // add  x5, x4, x0     # x5 = x4  (load-use stall)
+        // imem['h01C >> 2] = 32'h0040A303; // lw   x6, 4(x1)      # x6 = 99
+        // imem['h020 >> 2] = 32'h404303B3; // sub  x7, x6, x4     # x7 = 57
 
         // 3. test for branch penalties
         // imem['h000 >> 2] = 32'h00500093; // addi x1, x0, 5
@@ -93,19 +93,19 @@ module core_riscv_tb();
         // imem['h018 >> 2] = 32'h00200313; // addi x6, x0, 2
 
         // 4. randomized distributed workload
-        // imem['h000 >> 2] = 32'h00000093; // addi x1, x0, 0
-        // imem['h004 >> 2] = 32'h00800113; // addi x2, x0, 8
-        // imem['h008 >> 2] = 32'h0C800193; // addi x3, x0, 200
-        // imem['h00C >> 2] = 32'h00209213; // slli x4, x1, 2
-        // imem['h010 >> 2] = 32'h004182B3; // add  x5, x3, x4
-        // imem['h014 >> 2] = 32'h0002A303; // lw   x6, 0(x5)
-        // imem['h018 >> 2] = 32'h00130313; // addi x6, x6, 1
-        // imem['h01C >> 2] = 32'h0062A023; // sw   x6, 0(x5)
-        // imem['h020 >> 2] = 32'h00108093; // addi x1, x1, 1
-        // imem['h024 >> 2] = 32'hFE20C4E3; // blt  x1, x2, -24
-        // imem['h028 >> 2] = 32'h0001A383; // lw   x7, 0(x3)
-        // imem['h02C >> 2] = 32'h0041A403; // lw   x8, 4(x3)
-        // imem['h030 >> 2] = 32'h008384B3; // add  x9, x7, x8
+        imem['h000 >> 2] = 32'h00000093; // addi x1, x0, 0
+        imem['h004 >> 2] = 32'h00800113; // addi x2, x0, 8
+        imem['h008 >> 2] = 32'h0C800193; // addi x3, x0, 200
+        imem['h00C >> 2] = 32'h00209213; // slli x4, x1, 2
+        imem['h010 >> 2] = 32'h004182B3; // add  x5, x3, x4
+        imem['h014 >> 2] = 32'h0002A303; // lw   x6, 0(x5)
+        imem['h018 >> 2] = 32'h00130313; // addi x6, x6, 1
+        imem['h01C >> 2] = 32'h0062A023; // sw   x6, 0(x5)
+        imem['h020 >> 2] = 32'h00108093; // addi x1, x1, 1
+        imem['h024 >> 2] = 32'hFE20C4E3; // blt  x1, x2, -24
+        imem['h028 >> 2] = 32'h0001A383; // lw   x7, 0(x3)
+        imem['h02C >> 2] = 32'h0041A403; // lw   x8, 4(x3)
+        imem['h030 >> 2] = 32'h008384B3; // add  x9, x7, x8
     end
 
     // combinational read, registered ready
@@ -202,12 +202,12 @@ module core_riscv_tb();
         // check_reg( 8, 32'd68,  "and x8=68");
 
         // 2. load-use hazard checks
-        check_reg( 4, 32'd42,  "lw x4=42");
-        check_reg( 5, 32'd42,  "add x5=42");
-        check_reg( 6, 32'd99,  "lw x6=99");
-        check_reg( 7, 32'd57,  "sub x7=57");
-        check_dmem(32'h00000064, 32'd42, "sw x2->mem[100]");
-        check_dmem(32'h00000068, 32'd99, "sw x3->mem[104]");
+        // check_reg( 4, 32'd42,  "lw x4=42");
+        // check_reg( 5, 32'd42,  "add x5=42");
+        // check_reg( 6, 32'd99,  "lw x6=99");
+        // check_reg( 7, 32'd57,  "sub x7=57");
+        // check_dmem(32'h00000064, 32'd42, "sw x2->mem[100]");
+        // check_dmem(32'h00000068, 32'd99, "sw x3->mem[104]");
 
         // 3. branch penalty checks
         // check_reg( 1, 32'd5, "addi x1=5");
@@ -218,17 +218,17 @@ module core_riscv_tb();
         // check_reg( 6, 32'd2, "addi x6=2");
 
         // 4. randomized workload checks
-        // check_reg( 7, 32'd1, "lw x7=1");
-        // check_reg( 8, 32'd1, "lw x8=1");
-        // check_reg( 9, 32'd2, "add x9=2");
-        // check_dmem(32'h000000C8, 32'd1, "array[0]=1");
-        // check_dmem(32'h000000CC, 32'd1, "array[1]=1");
-        // check_dmem(32'h000000D0, 32'd1, "array[2]=1");
-        // check_dmem(32'h000000D4, 32'd1, "array[3]=1");
-        // check_dmem(32'h000000D8, 32'd1, "array[4]=1");
-        // check_dmem(32'h000000DC, 32'd1, "array[5]=1");
-        // check_dmem(32'h000000E0, 32'd1, "array[6]=1");
-        // check_dmem(32'h000000E4, 32'd1, "array[7]=1");
+        check_reg( 7, 32'd1, "lw x7=1");
+        check_reg( 8, 32'd1, "lw x8=1");
+        check_reg( 9, 32'd2, "add x9=2");
+        check_dmem(32'h000000C8, 32'd1, "array[0]=1");
+        check_dmem(32'h000000CC, 32'd1, "array[1]=1");
+        check_dmem(32'h000000D0, 32'd1, "array[2]=1");
+        check_dmem(32'h000000D4, 32'd1, "array[3]=1");
+        check_dmem(32'h000000D8, 32'd1, "array[4]=1");
+        check_dmem(32'h000000DC, 32'd1, "array[5]=1");
+        check_dmem(32'h000000E0, 32'd1, "array[6]=1");
+        check_dmem(32'h000000E4, 32'd1, "array[7]=1");
 
         $display("\n========== SUMMARY ==========");
         $display("PASS: %0d   FAIL: %0d   TOTAL: %0d", pass_count, fail_count, pass_count + fail_count);

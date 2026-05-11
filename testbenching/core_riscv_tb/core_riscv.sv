@@ -142,16 +142,40 @@ module core_riscv (
         .flush_id_ex(flush)
     );
 
+    logic[31:0] branch_rs1, branch_rs2;
+
+    always_comb begin
+        if      (mem_reg_write && (mem_rd != 5'b0) && (mem_rd == id_instr[19:15]))
+            branch_rs1 = mem_alu_result;
+        else if (wb_reg_write  && (wb_rd  != 5'b0) && (wb_rd  == id_instr[19:15]))
+            branch_rs1 = rf_wr_data;
+        else
+            branch_rs1 = rf_rs1_data;
+    end
+    
+    always_comb begin
+        if      (mem_reg_write && (mem_rd != 5'b0) && (mem_rd == id_instr[24:20]))
+            branch_rs2 = mem_alu_result;
+        else if (wb_reg_write  && (wb_rd  != 5'b0) && (wb_rd  == id_instr[24:20]))
+            branch_rs2 = rf_wr_data;
+        else
+            branch_rs2 = rf_rs2_data;
+    end
+
+    logic branch_taken_raw;
+
     branch_unit branch_unit (
-        .rs1_data(rf_rs1_data),
-        .rs2_data(rf_rs2_data),
+        .rs1_data(branch_rs1),
+        .rs2_data(branch_rs2),
         .branch(branch),
         .funct3(id_instr[14:12]),
         .pc(id_pc),
         .imm(immediate),
-        .branch_taken(branch_taken),
+        .branch_taken(branch_taken_raw),
         .branch_target(branch_target)
     );
+
+    assign branch_taken = branch_taken_raw && !mem_stall && imem_ready;
 
     idex_register idex (
         .clk(clk),
@@ -254,7 +278,7 @@ module core_riscv (
         if (!rst_n) dmem_ready_prev <= 1'b0;
         else        dmem_ready_prev <= dmem_ready;
     end
-    
+
     assign dmem_addr  = mem_alu_result;
     assign dmem_wdata = mem_rs2_data;
     assign dmem_rd_en = mem_mem_read && !dmem_ready && !dmem_ready_prev;
