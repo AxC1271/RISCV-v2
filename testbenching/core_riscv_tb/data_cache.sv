@@ -154,6 +154,11 @@ module data_cache # (
                 end
                 ALLOCATE: begin
                     if (mem_ready) begin
+                        // Capture rd_data immediately when the target word comes in
+                        if (!miss_wr_en && (word_counter == miss_word_offset))
+                            rd_data <= mem_rd_data;
+                
+                        // Refill the block
                         if (miss_wr_en && (word_counter == miss_word_offset)) begin
                             data_array[miss_set][current_way][word_counter] <= miss_wr_data;
                             refill_data[word_counter]                       <= miss_wr_data;
@@ -161,16 +166,13 @@ module data_cache # (
                             data_array[miss_set][current_way][word_counter] <= mem_rd_data;
                             refill_data[word_counter]                       <= mem_rd_data;
                         end
+                
                         if (word_counter == WORD_OFF_BITS'(BLOCK_WORDS - 1)) begin
                             tag_array[miss_set][current_way]   <= miss_tag;
                             valid_array[miss_set][current_way] <= 1'b1;
                             dirty_array[miss_set][current_way] <= miss_wr_en;
                             if (miss_wr_en)
-                                rd_data <= miss_wr_data;
-                            else if (word_counter == miss_word_offset)
-                                rd_data <= mem_rd_data;
-                            else
-                                rd_data <= refill_data[miss_word_offset];
+                                rd_data <= miss_wr_data;   // overrides for store path
                             lru_array[miss_set] <= ~current_way;
                             ready               <= 1'b1;
                             state               <= IDLE;

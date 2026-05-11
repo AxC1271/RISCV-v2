@@ -12,19 +12,18 @@ module ifid_register (
 );
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            id_pc <= 32'h0;
-            id_instruction <= 32'h00000013;  
-        end else if (stall) begin
-            // hold current values
-            id_pc <= id_pc;
-            id_instruction <= id_instruction;
+            id_pc          <= 32'h0;
+            id_instruction <= 32'h00000013;
+            
+        // flush wins over stall
         end else if (flush) begin
-            // insert nop bubble
-            id_pc <= 32'h0;
-            id_instruction <= 32'h00000013;  // NOP
+            id_pc          <= 32'h0;
+            id_instruction <= 32'h00000013;
+        end else if (stall) begin
+            id_pc          <= id_pc;
+            id_instruction <= id_instruction;
         end else begin
-            // normal operation
-            id_pc <= if_pc;
+            id_pc          <= if_pc;
             id_instruction <= if_instruction;
         end
     end

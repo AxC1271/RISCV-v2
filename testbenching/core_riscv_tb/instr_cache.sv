@@ -6,6 +6,7 @@ module instr_cache # (
     input  logic        rst_n,
     input  logic [31:0] cpu_addr,
     input  logic        cpu_req,
+    input logic         mem_stall,
     output logic [31:0] cpu_rdata,
     output logic        cpu_ready,
     output logic [31:0] mem_addr,
@@ -50,7 +51,7 @@ module instr_cache # (
             cpu_ready_r <= 1'b0; // default deassert
             case (state)
                 IDLE: begin
-                    if (cpu_req) begin
+                    if (!mem_stall && cpu_req) begin
                         if (hit) begin
                             // hit: return data and pulse ready, stay in IDLE
                             hit_data_r  <= cache_ram[addr_index][addr_offset];
@@ -68,14 +69,17 @@ module instr_cache # (
                 REFILL: begin
                     if (mem_ready) begin
                         cache_ram[miss_index][refill_count] <= mem_rdata;
+                        
+                        // Capture immediately when target word arrives
+                        if (refill_count == miss_offset)
+                            hit_data_r <= mem_rdata;
+                            
                         if (refill_count == 2'd3) begin
-                            // last word: finalize line and pulse ready
                             tag_ram[miss_index]   <= miss_tag;
                             valid_ram[miss_index] <= 1'b1;
-                            hit_data_r <= (miss_offset == 2'd3) ? mem_rdata
-                                     : cache_ram[miss_index][miss_offset];
-                            cpu_ready_r           <= 1'b1;
-                            state                 <= IDLE;
+                            // hit_data_r already set above; no refill lookup needed
+                            cpu_ready_r <= 1'b1;
+                            state       <= IDLE;
                         end else begin
                             refill_count <= refill_count + 2'd1;
                         end

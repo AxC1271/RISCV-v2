@@ -9,13 +9,11 @@ module core_riscv_tb();
     logic rst_n;
     logic cpu_enable;
 
-    // i-cache signals with mem
     logic [31:0] imem_addr;
     logic        imem_req;
     logic [31:0] imem_rdata;
     logic        imem_ready;
 
-    // d-cache signals with mem
     logic [31:0] dmem_addr;
     logic [31:0] dmem_wdata;
     logic        dmem_rd_en;
@@ -29,7 +27,6 @@ module core_riscv_tb();
     logic [31:0] debug_reg_data;
     logic        debug_halted;
 
-    // instantiate design under test
     core_riscv dut (
         .clk(clk),
         .rst_n(rst_n),
@@ -61,7 +58,7 @@ module core_riscv_tb();
 
     initial begin
         for (int i = 0; i < IMEM_WORDS; i++)
-            imem[i] = 32'h00000013; // NOP (addi x0, x0, 0)
+            imem[i] = 32'h00000013; // NOP
 
         // refer to riscv_asm.py for encoding details
 
@@ -73,54 +70,49 @@ module core_riscv_tb();
         // imem['h010 >> 2] = 32'h401202B3; // sub  x5, x4, x1      # x5 = 90   EX->EX x4, MEM->EX x1
         // imem['h014 >> 2] = 32'h0022C333; // xor  x6, x5, x2      # x6 = 85   EX->EX x5, MEM->EX x2
         // imem['h018 >> 2] = 32'h003363B3; // or   x7, x6, x3      # x7 = 93   EX->EX x6, MEM->EX x3
-        // imem['h01C >> 2] = 32'h0043F433; // and  x8, x7, x4      # x8 = 68   EX->EX x7, MEM->EX x4  (93&100=68)
+        // imem['h01C >> 2] = 32'h0043F433; // and  x8, x7, x4      # x8 = 68   EX->EX x7, MEM->EX x4
 
-        // // 2. test for load-use hazards and pipeline stalls in the risc-v processor
+        // 2. test for load-use hazards and pipeline stalls
         imem['h000 >> 2] = 32'h06400093; // addi x1, x0, 100    # base = 100
         imem['h004 >> 2] = 32'h02A00113; // addi x2, x0, 42     # val = 42
         imem['h008 >> 2] = 32'h0020A023; // sw   x2, 0(x1)      # mem[100] = 42
         imem['h00C >> 2] = 32'h06300193; // addi x3, x0, 99     # val = 99
         imem['h010 >> 2] = 32'h0030A223; // sw   x3, 4(x1)      # mem[104] = 99
-        imem['h014 >> 2] = 32'h0000A203; // lw   x4, 0(x1)      # x4 = 42   <load>
-        imem['h018 >> 2] = 32'h000202B3; // add  x5, x4, x0     # x5 = x4   LOAD-USE stall
-        imem['h01C >> 2] = 32'h0040A303; // lw   x6, 4(x1)      # x6 = 99   <load>
-        imem['h020 >> 2] = 32'h404303B3; // sub  x7, x6, x4     # x7 = 57 
+        imem['h014 >> 2] = 32'h0000A203; // lw   x4, 0(x1)      # x4 = 42
+        imem['h018 >> 2] = 32'h000202B3; // add  x5, x4, x0     # x5 = x4  (load-use stall)
+        imem['h01C >> 2] = 32'h0040A303; // lw   x6, 4(x1)      # x6 = 99
+        imem['h020 >> 2] = 32'h404303B3; // sub  x7, x6, x4     # x7 = 57
 
-        // 3. test for branch penalties in this workload
-        // imem['h000 >> 2] = 32'h00500093; // addi x1, x0, 5      # x1 = 5
-        // imem['h004 >> 2] = 32'h00500113; // addi x2, x0, 5      # x2 = 5
-        // imem['h008 >> 2] = 32'h00208663; // beq  x1, x2, +12    # taken -> flush 2 instrs
-        // imem['h00C >> 2] = 32'h06300193; // addi x3, x0, 99     # SQUASHED
-        // imem['h010 >> 2] = 32'h05800213; // addi x4, x0, 88     # SQUASHED
-        // imem['h014 >> 2] = 32'h00100293; // addi x5, x0, 1      # x5 = 1  (branch target)
-        // imem['h018 >> 2] = 32'h00200313; // addi x6, x0, 2      # x6 = 2
+        // 3. test for branch penalties
+        // imem['h000 >> 2] = 32'h00500093; // addi x1, x0, 5
+        // imem['h004 >> 2] = 32'h00500113; // addi x2, x0, 5
+        // imem['h008 >> 2] = 32'h00208663; // beq  x1, x2, +12
+        // imem['h00C >> 2] = 32'h06300193; // addi x3, x0, 99  SQUASHED
+        // imem['h010 >> 2] = 32'h05800213; // addi x4, x0, 88  SQUASHED
+        // imem['h014 >> 2] = 32'h00100293; // addi x5, x0, 1
+        // imem['h018 >> 2] = 32'h00200313; // addi x6, x0, 2
 
-        // 4. randomized distributed workload for risc-v processor
-        // imem['h000 >> 2] = 32'h00000093; // addi x1, x0, 0      # i = 0
-        // imem['h004 >> 2] = 32'h00800113; // addi x2, x0, 8      # bound = 8
-        // imem['h008 >> 2] = 32'h0C800193; // addi x3, x0, 200    # base addr = 200
-        // imem['h00C >> 2] = 32'h00209213; // slli x4, x1, 2      # x4 = i*4
-        // imem['h010 >> 2] = 32'h004182B3; // add  x5, x3, x4     # x5 = base+offset
-        // imem['h014 >> 2] = 32'h0002A303; // lw   x6, 0(x5)      # x6 = array[i]
-        // imem['h018 >> 2] = 32'h00130313; // addi x6, x6, 1      # x6++
-        // imem['h01C >> 2] = 32'h0062A023; // sw   x6, 0(x5)      # array[i] = x6
-        // imem['h020 >> 2] = 32'h00108093; // addi x1, x1, 1      # i++
-        // imem['h024 >> 2] = 32'hFE20C4E3; // blt  x1, x2, -24    # if i<8, loop
-        // imem['h028 >> 2] = 32'h0001A383; // lw   x7, 0(x3)      # x7 = array[0] = 1
-        // imem['h02C >> 2] = 32'h0041A403; // lw   x8, 4(x3)      # x8 = array[1] = 1
-        // imem['h030 >> 2] = 32'h008384B3; // add  x9, x7, x8     # x9 = 2
+        // 4. randomized distributed workload
+        // imem['h000 >> 2] = 32'h00000093; // addi x1, x0, 0
+        // imem['h004 >> 2] = 32'h00800113; // addi x2, x0, 8
+        // imem['h008 >> 2] = 32'h0C800193; // addi x3, x0, 200
+        // imem['h00C >> 2] = 32'h00209213; // slli x4, x1, 2
+        // imem['h010 >> 2] = 32'h004182B3; // add  x5, x3, x4
+        // imem['h014 >> 2] = 32'h0002A303; // lw   x6, 0(x5)
+        // imem['h018 >> 2] = 32'h00130313; // addi x6, x6, 1
+        // imem['h01C >> 2] = 32'h0062A023; // sw   x6, 0(x5)
+        // imem['h020 >> 2] = 32'h00108093; // addi x1, x1, 1
+        // imem['h024 >> 2] = 32'hFE20C4E3; // blt  x1, x2, -24
+        // imem['h028 >> 2] = 32'h0001A383; // lw   x7, 0(x3)
+        // imem['h02C >> 2] = 32'h0041A403; // lw   x8, 4(x3)
+        // imem['h030 >> 2] = 32'h008384B3; // add  x9, x7, x8
     end
 
-    // combinational read — data valid same cycle as req
+    // combinational read, registered ready
     assign imem_rdata = imem_req ? imem[imem_addr[31:2]] : 32'h00000013;
 
-    // Ready pulses one cycle after req (registered handshake)
-    always_ff @(posedge clk) begin
-        if (imem_req)
-            imem_ready_r <= 1'b1;
-        else
-            imem_ready_r <= 1'b0;
-    end
+    always_ff @(posedge clk)
+        imem_ready_r <= imem_req;
 
     assign imem_ready = imem_ready_r;
 
@@ -151,70 +143,39 @@ module core_riscv_tb();
     int pass_count;
     int fail_count;
 
-    task automatic check_reg (
-        input int unsigned  reg_num,
-        input logic [31:0]  expected,
-        input string        label
+    task automatic check_reg(
+        input int unsigned reg_num,
+        input logic [31:0] expected,
+        input string       label
     );
         logic [31:0] got;
         got = read_reg(reg_num);
         if (got === expected) begin
-            $display("  PASS  %-20s  x%-2d                   = 0x%08h",
-                     label, reg_num, got);
+            $display("  PASS  %-20s  x%-2d                   = 0x%08h", label, reg_num, got);
             pass_count++;
         end else begin
-            $display("  FAIL  %-20s  x%-2d  expected=0x%08h  got=0x%08h",
-                     label, reg_num, expected, got);
+            $display("  FAIL  %-20s  x%-2d  expected=0x%08h  got=0x%08h", label, reg_num, expected, got);
             fail_count++;
         end
     endtask
 
-    task automatic check_dmem (
+    // Cacheless: check backing store directly
+    task automatic check_dmem(
         input logic [31:0] byte_addr,
         input logic [31:0] expected,
         input string       label
     );
-        logic [20:0] chk_tag;
-        logic [6:0]  chk_set;
-        logic [1:0]  chk_woff;
         logic [31:0] got;
-        logic        found;
-    
-        chk_tag  = byte_addr[31:11];
-        chk_set  = byte_addr[10:4];
-        chk_woff = byte_addr[3:2];
-        found    = 1'b0;
-    
-        // check way 0
-        if (dut.dcache.valid_array[chk_set][0] &&
-            dut.dcache.tag_array[chk_set][0] == chk_tag) begin
-            got   = dut.dcache.data_array[chk_set][0][chk_woff];
-            found = 1'b1;
-        end
-        // check way 1
-        else if (dut.dcache.valid_array[chk_set][1] &&
-                 dut.dcache.tag_array[chk_set][1] == chk_tag) begin
-            got   = dut.dcache.data_array[chk_set][1][chk_woff];
-            found = 1'b1;
-        end
-        // not in cache -- fall back to backing store
-        else begin
-            got   = dmem[byte_addr[31:2]];
-            found = 1'b1;
-        end
-    
+        got = dmem[byte_addr[31:2]];
         if (got === expected) begin
-            $display("  PASS  %-20s  dmem[0x%08h] = 0x%08h",
-                     label, byte_addr, got);
+            $display("  PASS  %-20s  dmem[0x%08h] = 0x%08h", label, byte_addr, got);
             pass_count++;
         end else begin
-            $display("  FAIL  %-20s  dmem[0x%08h]  expected=0x%08h  got=0x%08h",
-                     label, byte_addr, expected, got);
+            $display("  FAIL  %-20s  dmem[0x%08h]  expected=0x%08h  got=0x%08h", label, byte_addr, expected, got);
             fail_count++;
         end
     endtask
 
-    // stimulus
     initial begin
         rst_n      = 1'b0;
         cpu_enable = 1'b0;
@@ -222,45 +183,44 @@ module core_riscv_tb();
         fail_count = 0;
 
         #1;
-
         repeat (5) @(posedge clk);
-        rst_n = 1'b1;
+        rst_n = 1'b1; 
         repeat (2) @(posedge clk);
         cpu_enable = 1'b1;
 
         $display("\n[TB] CPU running...");
-        repeat (600) @(posedge clk);
+        repeat (200) @(posedge clk);
 
-        // 1. testbench check for data forwarding
-        // check_reg( 1, 32'd10   , "addi x1=10");
-        // check_reg( 2, 32'd15   , "addi x2=15");
-        // check_reg( 3, 32'd25   , "add x3=25");
-        // check_reg( 4, 32'd100  , "slli x4=100");
-        // check_reg( 5, 32'd90   , "sub x5=90");
-        // check_reg( 6, 32'd85   , "xor x6=85");
-        // check_reg( 7, 32'd93   , "or x7=93");
-        // check_reg( 8, 32'd68   , "and x8=68");
+        // 1. forwarding checks
+        // check_reg( 1, 32'd10,  "addi x1=10");
+        // check_reg( 2, 32'd15,  "addi x2=15");
+        // check_reg( 3, 32'd25,  "add x3=25");
+        // check_reg( 4, 32'd100, "slli x4=100");
+        // check_reg( 5, 32'd90,  "sub x5=90");
+        // check_reg( 6, 32'd85,  "xor x6=85");
+        // check_reg( 7, 32'd93,  "or x7=93");
+        // check_reg( 8, 32'd68,  "and x8=68");
 
-        // 2. testbench check for the load use hazard
-        check_reg( 4, 32'd42   , "lw x4=42");
-        check_reg( 5, 32'd42   , "add x5=42");
-        check_reg( 6, 32'd99   , "lw x6=99");
-        check_reg( 7, 32'd57   , "sub x7=57");
-        check_dmem(32'h00000064, 32'd42,  "sw x2->mem[100]");
-        check_dmem(32'h00000068, 32'd99,  "sw x3->mem[104]");
+        // 2. load-use hazard checks
+        check_reg( 4, 32'd42,  "lw x4=42");
+        check_reg( 5, 32'd42,  "add x5=42");
+        check_reg( 6, 32'd99,  "lw x6=99");
+        check_reg( 7, 32'd57,  "sub x7=57");
+        check_dmem(32'h00000064, 32'd42, "sw x2->mem[100]");
+        check_dmem(32'h00000068, 32'd99, "sw x3->mem[104]");
 
-        // 3. testbench check for branch penalties/squash
-        // check_reg( 1, 32'd5    , "addi x1=5");
-        // check_reg( 2, 32'd5    , "addi x2=5");
-        // check_reg( 3, 32'd0    , "x3 squashed=0");
-        // check_reg( 4, 32'd0    , "x4 squashed=0");
-        // check_reg( 5, 32'd1    , "addi x5=1");
-        // check_reg( 6, 32'd2    , "addi x6=2");
+        // 3. branch penalty checks
+        // check_reg( 1, 32'd5, "addi x1=5");
+        // check_reg( 2, 32'd5, "addi x2=5");
+        // check_reg( 3, 32'd0, "x3 squashed=0");
+        // check_reg( 4, 32'd0, "x4 squashed=0");
+        // check_reg( 5, 32'd1, "addi x5=1");
+        // check_reg( 6, 32'd2, "addi x6=2");
 
-        // 4. testbench check for randomized distributed workload on risc-v processor
-        // check_reg( 7, 32'd1    , "lw x7=1");
-        // check_reg( 8, 32'd1    , "lw x8=1");
-        // check_reg( 9, 32'd2    , "add x9=2");
+        // 4. randomized workload checks
+        // check_reg( 7, 32'd1, "lw x7=1");
+        // check_reg( 8, 32'd1, "lw x8=1");
+        // check_reg( 9, 32'd2, "add x9=2");
         // check_dmem(32'h000000C8, 32'd1, "array[0]=1");
         // check_dmem(32'h000000CC, 32'd1, "array[1]=1");
         // check_dmem(32'h000000D0, 32'd1, "array[2]=1");
@@ -271,53 +231,33 @@ module core_riscv_tb();
         // check_dmem(32'h000000E4, 32'd1, "array[7]=1");
 
         $display("\n========== SUMMARY ==========");
-        $display("PASS: %0d   FAIL: %0d   TOTAL: %0d",
-                 pass_count, fail_count, pass_count + fail_count);
-
+        $display("PASS: %0d   FAIL: %0d   TOTAL: %0d", pass_count, fail_count, pass_count + fail_count);
         if (fail_count == 0)
             $display("ALL TESTS PASSED");
         else
-            $display("SOME TESTS FAILED -- check pipeline/forwarding/cache");
-
+            $display("SOME TESTS FAILED -- check pipeline/forwarding/memory");
         $finish;
     end
 
     // timeout watchdog
     initial begin
-        #100000;
-        $display("[TIMEOUT] Simulation exceeded 100us -- possible hang");
+        #50000;
+        $display("[TIMEOUT] Simulation exceeded 50us -- possible hang");
         $fatal;
     end
 
-
-    // initial begin
-    //     @(posedge rst_n);
-    //     forever begin
-    //         @(posedge clk);
-    //         $display("[T=%0t] PC=%08h INSTR=%08h icache_state=%0d icache_ready=%b hit=%b addr_idx=%02h addr_off=%01h hit_data=%08h",
-    //                  $time, debug_pc, debug_instr,
-    //                  dut.icache.state, dut.icache.cpu_ready,
-    //                  dut.icache.hit, dut.icache.addr_index, dut.icache.addr_offset,
-    //                  dut.icache.hit_data_r);
-    //     end
-    // end
-    // combined icache + dcache monitor — only print when something
-    // interesting is happening on the dcache side
-    // initial begin
-    //     @(posedge rst_n);
-    //     forever begin
-    //         @(posedge clk);
-    //         $display("[T=%0t] PC=%08h INSTR=%08h | dcache: addr=%08h wr_en=%b rd_en=%b wr_data=%08h ready=%b state=%0d | mem_stall=%b",
-    //                  $time,
-    //                  debug_pc, debug_instr,
-    //                  dut.dcache.addr,
-    //                  dut.dcache.wr_en,
-    //                  dut.dcache.rd_en,
-    //                  dut.dcache.wr_data,
-    //                  dut.dcache.ready,
-    //                  dut.dcache.state,
-    //                  dut.mem_stall);
-    //     end
-    // end
+    // pipeline monitor
+    initial begin
+        @(posedge rst_n);
+        forever begin
+            @(posedge clk);
+            $display("[T=%0t] PC=%08h INSTR=%08h | fwd_a=%b fwd_b=%b | mem_rd=x%0d mem_rw=%b | wb_rd=x%0d | mem_stall=%b fetch_stall=%b",
+                $time, debug_pc, debug_instr,
+                dut.forward_a, dut.forward_b,
+                dut.mem_rd, dut.mem_reg_write,
+                dut.wb_rd,
+                dut.mem_stall, dut.fetch_stall);
+        end
+    end
 
 endmodule

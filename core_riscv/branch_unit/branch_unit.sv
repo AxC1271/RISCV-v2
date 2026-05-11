@@ -21,12 +21,12 @@ module branch_unit (
     // compute branch condition
     always_comb begin
         case (funct3)
-            3'b000: condition_met = (rs1_data == rs2_data);         // BEQ
-            3'b001: condition_met = (rs1_data != rs2_data);         // BNE
+            3'b000: condition_met = (rs1_data == rs2_data);                    // BEQ
+            3'b001: condition_met = (rs1_data != rs2_data);                    // BNE
             3'b100: condition_met = ($signed(rs1_data) < $signed(rs2_data));   // BLT
             3'b101: condition_met = ($signed(rs1_data) >= $signed(rs2_data));  // BGE
-            3'b110: condition_met = (rs1_data < rs2_data);          // BLTU
-            3'b111: condition_met = (rs1_data >= rs2_data);         // BGEU
+            3'b110: condition_met = (rs1_data < rs2_data);                     // BLTU
+            3'b111: condition_met = (rs1_data >= rs2_data);                    // BGEU
             default: condition_met = 1'b0;
         endcase
     end
