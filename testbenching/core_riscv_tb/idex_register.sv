@@ -48,9 +48,6 @@ module idex_register (
             ex_reg_write <= 1'b0;
             ex_mem_to_reg <= 1'b0;
 
-        end else if (stall) begin
-            // hold since stall takes priority over flush
-
         end else if (flush) begin
             // insert NOP bubble, only reachable when not stalling
             ex_pc <= 32'h0;
@@ -66,6 +63,9 @@ module idex_register (
             ex_mem_write <= 1'b0;
             ex_reg_write <= 1'b0;
             ex_mem_to_reg <= 1'b0;
+
+        end else if (stall) begin
+            // hold since stall takes priority over flush
 
         end else begin
             // normal advance
