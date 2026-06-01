@@ -63,14 +63,14 @@ module core_riscv_tb();
         // refer to riscv_asm.py for encoding details
 
         // 1. handle regular r-type and i-type instructions here
-        // imem['h000 >> 2] = 32'h00A00093; // addi x1, x0, 10      # x1 = 10
-        // imem['h004 >> 2] = 32'h00508113; // addi x2, x1, 5       # x2 = 15   EX->EX x1
-        // imem['h008 >> 2] = 32'h002081B3; // add  x3, x1, x2      # x3 = 25   EX->EX x2, MEM->EX x1
-        // imem['h00C >> 2] = 32'h00219213; // slli x4, x3, 2       # x4 = 100  EX->EX x3
-        // imem['h010 >> 2] = 32'h401202B3; // sub  x5, x4, x1      # x5 = 90   EX->EX x4, MEM->EX x1
-        // imem['h014 >> 2] = 32'h0022C333; // xor  x6, x5, x2      # x6 = 85   EX->EX x5, MEM->EX x2
-        // imem['h018 >> 2] = 32'h003363B3; // or   x7, x6, x3      # x7 = 93   EX->EX x6, MEM->EX x3
-        // imem['h01C >> 2] = 32'h0043F433; // and  x8, x7, x4      # x8 = 68   EX->EX x7, MEM->EX x4
+        imem['h000 >> 2] = 32'h00A00093; // addi x1, x0, 10      # x1 = 10
+        imem['h004 >> 2] = 32'h00508113; // addi x2, x1, 5       # x2 = 15   EX->EX x1
+        imem['h008 >> 2] = 32'h002081B3; // add  x3, x1, x2      # x3 = 25   EX->EX x2, MEM->EX x1
+        imem['h00C >> 2] = 32'h00219213; // slli x4, x3, 2       # x4 = 100  EX->EX x3
+        imem['h010 >> 2] = 32'h401202B3; // sub  x5, x4, x1      # x5 = 90   EX->EX x4, MEM->EX x1
+        imem['h014 >> 2] = 32'h0022C333; // xor  x6, x5, x2      # x6 = 85   EX->EX x5, MEM->EX x2
+        imem['h018 >> 2] = 32'h003363B3; // or   x7, x6, x3      # x7 = 93   EX->EX x6, MEM->EX x3
+        imem['h01C >> 2] = 32'h0043F433; // and  x8, x7, x4      # x8 = 68   EX->EX x7, MEM->EX x4
 
         // 2. test for load-use hazards and pipeline stalls
         // imem['h000 >> 2] = 32'h06400093; // addi x1, x0, 100    # base = 100
@@ -93,19 +93,19 @@ module core_riscv_tb();
         // imem['h018 >> 2] = 32'h00200313; // addi x6, x0, 2
 
         // 4. randomized distributed workload
-        imem['h000 >> 2] = 32'h00000093; // addi x1, x0, 0
-        imem['h004 >> 2] = 32'h00800113; // addi x2, x0, 8
-        imem['h008 >> 2] = 32'h0C800193; // addi x3, x0, 200
-        imem['h00C >> 2] = 32'h00209213; // slli x4, x1, 2
-        imem['h010 >> 2] = 32'h004182B3; // add  x5, x3, x4
-        imem['h014 >> 2] = 32'h0002A303; // lw   x6, 0(x5)
-        imem['h018 >> 2] = 32'h00130313; // addi x6, x6, 1
-        imem['h01C >> 2] = 32'h0062A023; // sw   x6, 0(x5)
-        imem['h020 >> 2] = 32'h00108093; // addi x1, x1, 1
-        imem['h024 >> 2] = 32'hFE20C4E3; // blt  x1, x2, -24
-        imem['h028 >> 2] = 32'h0001A383; // lw   x7, 0(x3)
-        imem['h02C >> 2] = 32'h0041A403; // lw   x8, 4(x3)
-        imem['h030 >> 2] = 32'h008384B3; // add  x9, x7, x8
+        // imem['h000 >> 2] = 32'h00000093; // addi x1, x0, 0
+        // imem['h004 >> 2] = 32'h00800113; // addi x2, x0, 8
+        // imem['h008 >> 2] = 32'h0C800193; // addi x3, x0, 200
+        // imem['h00C >> 2] = 32'h00209213; // slli x4, x1, 2
+        // imem['h010 >> 2] = 32'h004182B3; // add  x5, x3, x4
+        // imem['h014 >> 2] = 32'h0002A303; // lw   x6, 0(x5)
+        // imem['h018 >> 2] = 32'h00130313; // addi x6, x6, 1
+        // imem['h01C >> 2] = 32'h0062A023; // sw   x6, 0(x5)
+        // imem['h020 >> 2] = 32'h00108093; // addi x1, x1, 1
+        // imem['h024 >> 2] = 32'hFE20C4E3; // blt  x1, x2, -24
+        // imem['h028 >> 2] = 32'h0001A383; // lw   x7, 0(x3)
+        // imem['h02C >> 2] = 32'h0041A403; // lw   x8, 4(x3)
+        // imem['h030 >> 2] = 32'h008384B3; // add  x9, x7, x8
     end
 
     // combinational read, registered ready
@@ -160,7 +160,7 @@ module core_riscv_tb();
     endtask
 
     // Cacheless: check backing store directly
-    task automatic check_dmem(
+    task automatic check_dmem (
         input logic [31:0] byte_addr,
         input logic [31:0] expected,
         input string       label
@@ -192,14 +192,14 @@ module core_riscv_tb();
         repeat (200) @(posedge clk);
 
         // 1. forwarding checks
-        // check_reg( 1, 32'd10,  "addi x1=10");
-        // check_reg( 2, 32'd15,  "addi x2=15");
-        // check_reg( 3, 32'd25,  "add x3=25");
-        // check_reg( 4, 32'd100, "slli x4=100");
-        // check_reg( 5, 32'd90,  "sub x5=90");
-        // check_reg( 6, 32'd85,  "xor x6=85");
-        // check_reg( 7, 32'd93,  "or x7=93");
-        // check_reg( 8, 32'd68,  "and x8=68");
+        check_reg( 1, 32'd10,  "addi x1=10");
+        check_reg( 2, 32'd15,  "addi x2=15");
+        check_reg( 3, 32'd25,  "add x3=25");
+        check_reg( 4, 32'd100, "slli x4=100");
+        check_reg( 5, 32'd90,  "sub x5=90");
+        check_reg( 6, 32'd85,  "xor x6=85");
+        check_reg( 7, 32'd93,  "or x7=93");
+        check_reg( 8, 32'd68,  "and x8=68");
 
         // 2. load-use hazard checks
         // check_reg( 4, 32'd42,  "lw x4=42");
@@ -218,17 +218,17 @@ module core_riscv_tb();
         // check_reg( 6, 32'd2, "addi x6=2");
 
         // 4. randomized workload checks
-        check_reg( 7, 32'd1, "lw x7=1");
-        check_reg( 8, 32'd1, "lw x8=1");
-        check_reg( 9, 32'd2, "add x9=2");
-        check_dmem(32'h000000C8, 32'd1, "array[0]=1");
-        check_dmem(32'h000000CC, 32'd1, "array[1]=1");
-        check_dmem(32'h000000D0, 32'd1, "array[2]=1");
-        check_dmem(32'h000000D4, 32'd1, "array[3]=1");
-        check_dmem(32'h000000D8, 32'd1, "array[4]=1");
-        check_dmem(32'h000000DC, 32'd1, "array[5]=1");
-        check_dmem(32'h000000E0, 32'd1, "array[6]=1");
-        check_dmem(32'h000000E4, 32'd1, "array[7]=1");
+        // check_reg( 7, 32'd1, "lw x7=1");
+        // check_reg( 8, 32'd1, "lw x8=1");
+        // check_reg( 9, 32'd2, "add x9=2");
+        // check_dmem(32'h000000C8, 32'd1, "array[0]=1");
+        // check_dmem(32'h000000CC, 32'd1, "array[1]=1");
+        // check_dmem(32'h000000D0, 32'd1, "array[2]=1");
+        // check_dmem(32'h000000D4, 32'd1, "array[3]=1");
+        // check_dmem(32'h000000D8, 32'd1, "array[4]=1");
+        // check_dmem(32'h000000DC, 32'd1, "array[5]=1");
+        // check_dmem(32'h000000E0, 32'd1, "array[6]=1");
+        // check_dmem(32'h000000E4, 32'd1, "array[7]=1");
 
         $display("\n========== SUMMARY ==========");
         $display("PASS: %0d   FAIL: %0d   TOTAL: %0d", pass_count, fail_count, pass_count + fail_count);
