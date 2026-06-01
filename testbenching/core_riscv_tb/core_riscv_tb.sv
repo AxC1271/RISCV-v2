@@ -63,25 +63,25 @@ module core_riscv_tb();
         // refer to riscv_asm.py for encoding details
 
         // 1. handle regular r-type and i-type instructions here
-        imem['h000 >> 2] = 32'h00A00093; // addi x1, x0, 10      # x1 = 10
-        imem['h004 >> 2] = 32'h00508113; // addi x2, x1, 5       # x2 = 15   EX->EX x1
-        imem['h008 >> 2] = 32'h002081B3; // add  x3, x1, x2      # x3 = 25   EX->EX x2, MEM->EX x1
-        imem['h00C >> 2] = 32'h00219213; // slli x4, x3, 2       # x4 = 100  EX->EX x3
-        imem['h010 >> 2] = 32'h401202B3; // sub  x5, x4, x1      # x5 = 90   EX->EX x4, MEM->EX x1
-        imem['h014 >> 2] = 32'h0022C333; // xor  x6, x5, x2      # x6 = 85   EX->EX x5, MEM->EX x2
-        imem['h018 >> 2] = 32'h003363B3; // or   x7, x6, x3      # x7 = 93   EX->EX x6, MEM->EX x3
-        imem['h01C >> 2] = 32'h0043F433; // and  x8, x7, x4      # x8 = 68   EX->EX x7, MEM->EX x4
+        // imem['h000 >> 2] = 32'h00A00093; // addi x1, x0, 10      # x1 = 10
+        // imem['h004 >> 2] = 32'h00508113; // addi x2, x1, 5       # x2 = 15   EX->EX x1
+        // imem['h008 >> 2] = 32'h002081B3; // add  x3, x1, x2      # x3 = 25   EX->EX x2, MEM->EX x1
+        // imem['h00C >> 2] = 32'h00219213; // slli x4, x3, 2       # x4 = 100  EX->EX x3
+        // imem['h010 >> 2] = 32'h401202B3; // sub  x5, x4, x1      # x5 = 90   EX->EX x4, MEM->EX x1
+        // imem['h014 >> 2] = 32'h0022C333; // xor  x6, x5, x2      # x6 = 85   EX->EX x5, MEM->EX x2
+        // imem['h018 >> 2] = 32'h003363B3; // or   x7, x6, x3      # x7 = 93   EX->EX x6, MEM->EX x3
+        // imem['h01C >> 2] = 32'h0043F433; // and  x8, x7, x4      # x8 = 68   EX->EX x7, MEM->EX x4
 
         // 2. test for load-use hazards and pipeline stalls
-        // imem['h000 >> 2] = 32'h06400093; // addi x1, x0, 100    # base = 100
-        // imem['h004 >> 2] = 32'h02A00113; // addi x2, x0, 42     # val = 42
-        // imem['h008 >> 2] = 32'h0020A023; // sw   x2, 0(x1)      # mem[100] = 42
-        // imem['h00C >> 2] = 32'h06300193; // addi x3, x0, 99     # val = 99
-        // imem['h010 >> 2] = 32'h0030A223; // sw   x3, 4(x1)      # mem[104] = 99
-        // imem['h014 >> 2] = 32'h0000A203; // lw   x4, 0(x1)      # x4 = 42
-        // imem['h018 >> 2] = 32'h000202B3; // add  x5, x4, x0     # x5 = x4  (load-use stall)
-        // imem['h01C >> 2] = 32'h0040A303; // lw   x6, 4(x1)      # x6 = 99
-        // imem['h020 >> 2] = 32'h404303B3; // sub  x7, x6, x4     # x7 = 57
+        imem['h000 >> 2] = 32'h06400093; // addi x1, x0, 100    # base = 100
+        imem['h004 >> 2] = 32'h02A00113; // addi x2, x0, 42     # val = 42
+        imem['h008 >> 2] = 32'h0020A023; // sw   x2, 0(x1)      # mem[100] = 42
+        imem['h00C >> 2] = 32'h06300193; // addi x3, x0, 99     # val = 99
+        imem['h010 >> 2] = 32'h0030A223; // sw   x3, 4(x1)      # mem[104] = 99
+        imem['h014 >> 2] = 32'h0000A203; // lw   x4, 0(x1)      # x4 = 42
+        imem['h018 >> 2] = 32'h000202B3; // add  x5, x4, x0     # x5 = x4  (load-use stall)
+        imem['h01C >> 2] = 32'h0040A303; // lw   x6, 4(x1)      # x6 = 99
+        imem['h020 >> 2] = 32'h404303B3; // sub  x7, x6, x4     # x7 = 57
 
         // 3. test for branch penalties
         // imem['h000 >> 2] = 32'h00500093; // addi x1, x0, 5
@@ -192,22 +192,22 @@ module core_riscv_tb();
         repeat (200) @(posedge clk);
 
         // 1. forwarding checks
-        check_reg( 1, 32'd10,  "addi x1=10");
-        check_reg( 2, 32'd15,  "addi x2=15");
-        check_reg( 3, 32'd25,  "add x3=25");
-        check_reg( 4, 32'd100, "slli x4=100");
-        check_reg( 5, 32'd90,  "sub x5=90");
-        check_reg( 6, 32'd85,  "xor x6=85");
-        check_reg( 7, 32'd93,  "or x7=93");
-        check_reg( 8, 32'd68,  "and x8=68");
+        // check_reg( 1, 32'd10,  "addi x1=10");
+        // check_reg( 2, 32'd15,  "addi x2=15");
+        // check_reg( 3, 32'd25,  "add x3=25");
+        // check_reg( 4, 32'd100, "slli x4=100");
+        // check_reg( 5, 32'd90,  "sub x5=90");
+        // check_reg( 6, 32'd85,  "xor x6=85");
+        // check_reg( 7, 32'd93,  "or x7=93");
+        // check_reg( 8, 32'd68,  "and x8=68");
 
         // 2. load-use hazard checks
-        // check_reg( 4, 32'd42,  "lw x4=42");
-        // check_reg( 5, 32'd42,  "add x5=42");
-        // check_reg( 6, 32'd99,  "lw x6=99");
-        // check_reg( 7, 32'd57,  "sub x7=57");
-        // check_dmem(32'h00000064, 32'd42, "sw x2->mem[100]");
-        // check_dmem(32'h00000068, 32'd99, "sw x3->mem[104]");
+        check_reg( 4, 32'd42,  "lw x4=42");
+        check_reg( 5, 32'd42,  "add x5=42");
+        check_reg( 6, 32'd99,  "lw x6=99");
+        check_reg( 7, 32'd57,  "sub x7=57");
+        check_dmem(32'h00000064, 32'd42, "sw x2->mem[100]");
+        check_dmem(32'h00000068, 32'd99, "sw x3->mem[104]");
 
         // 3. branch penalty checks
         // check_reg( 1, 32'd5, "addi x1=5");

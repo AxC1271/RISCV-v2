@@ -3,6 +3,7 @@
 module memwb_register (
     input logic clk,
     input logic rst_n,
+    input logic flush,
     input logic [31:0] mem_alu_result,
     input logic [31:0] mem_read_data,
     input logic [4:0] mem_rd,
@@ -16,7 +17,7 @@ module memwb_register (
 );
 
     always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
+        if (!rst_n || flush) begin
             wb_alu_result <= 32'h0;
             wb_read_data <= 32'h0;
             wb_rd <= 5'h0;

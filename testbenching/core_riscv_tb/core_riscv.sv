@@ -66,7 +66,8 @@ module core_riscv (
     logic branch, jump;
 
     // stall/flush signals
-    logic stall, flush;
+    logic stall, flush_id_ex;
+    logic flush_mem_wb;
     logic [1:0] forward_a, forward_b;
 
     // branch unit signals
@@ -217,7 +218,8 @@ module core_riscv (
         .ex_mem_read(ex_mem_read),
         .mem_stall(mem_stall),
         .stall(stall),
-        .flush_id_ex(flush)
+        .flush_id_ex(flush_id_ex),
+        .flush_mem_wb(flush_mem_wb)
     );
 
     branch_unit branch_unit (
@@ -234,8 +236,8 @@ module core_riscv (
     idex_register idex (
         .clk(clk),
         .rst_n(rst_n),
-        .flush(flush || branch_taken),
-        .stall(mem_stall),
+        .flush(flush_id_ex || branch_taken),
+        .stall(1'b0),
         .id_pc(id_pc),
         .id_rs1_data(rf_rs1_data),
         .id_rs2_data(rf_rs2_data),
@@ -336,6 +338,7 @@ module core_riscv (
     memwb_register memwb (
         .clk(clk),
         .rst_n(rst_n),
+        .flush(flush_mem_wb),
         .mem_alu_result(mem_alu_result),
         .mem_read_data(dcache_rd_data),
         .mem_rd(mem_rd),
