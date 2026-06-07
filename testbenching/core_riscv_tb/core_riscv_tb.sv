@@ -164,26 +164,29 @@ module core_riscv_tb();
         input logic [31:0] expected,
         input string       label
     );
-        logic [20:0] t;   // TAG_BITS = 21
-        logic [6:0]  s;   // SET_INDEX_BITS = 7
-        logic [1:0]  w;   // WORD_OFF_BITS = 2
+        logic [20:0] t;
+        logic [6:0]  s;
+        logic [1:0]  w;
         logic [31:0] got;
+        logic        found;
     
         t = byte_addr[31:11];
         s = byte_addr[10:4];
         w = byte_addr[3:2];
+        found = 1'b0;
     
-        if (dut.dcache.valid_array[s][0] && dut.dcache.tag_array[s][0] == t)
-            got = dut.dcache.data_array[s][0][w];
-        else if (dut.dcache.valid_array[s][1] && dut.dcache.tag_array[s][1] == t)
-            got = dut.dcache.data_array[s][1][w];
-        else begin
-            $display("  FAIL  %-20s  dcache[0x%08h] not found in cache", label, byte_addr);
-            fail_count++;
-            return;
+        if (dut.dcache.valid_array[s][0] && dut.dcache.tag_array[s][0] == t) begin
+            got   = dut.dcache.data_array[s][0][w];
+            found = 1'b1;
+        end else if (dut.dcache.valid_array[s][1] && dut.dcache.tag_array[s][1] == t) begin
+            got   = dut.dcache.data_array[s][1][w];
+            found = 1'b1;
         end
     
-        if (got === expected) begin
+        if (!found) begin
+            $display("  FAIL  %-20s  dcache[0x%08h] not found in cache", label, byte_addr);
+            fail_count++;
+        end else if (got === expected) begin
             $display("  PASS  %-20s  dcache[0x%08h] = 0x%08h", label, byte_addr, got);
             pass_count++;
         end else begin
