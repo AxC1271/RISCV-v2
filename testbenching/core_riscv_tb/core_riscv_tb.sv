@@ -159,6 +159,40 @@ module core_riscv_tb();
         end
     endtask
 
+    task automatic check_dcache(
+        input logic [31:0] byte_addr,
+        input logic [31:0] expected,
+        input string       label
+    );
+        logic [20:0] t;   // TAG_BITS = 21
+        logic [6:0]  s;   // SET_INDEX_BITS = 7
+        logic [1:0]  w;   // WORD_OFF_BITS = 2
+        logic [31:0] got;
+    
+        t = byte_addr[31:11];
+        s = byte_addr[10:4];
+        w = byte_addr[3:2];
+    
+        if (dut.dcache.valid_array[s][0] && dut.dcache.tag_array[s][0] == t)
+            got = dut.dcache.data_array[s][0][w];
+        else if (dut.dcache.valid_array[s][1] && dut.dcache.tag_array[s][1] == t)
+            got = dut.dcache.data_array[s][1][w];
+        else begin
+            $display("  FAIL  %-20s  dcache[0x%08h] not found in cache", label, byte_addr);
+            fail_count++;
+            return;
+        end
+    
+        if (got === expected) begin
+            $display("  PASS  %-20s  dcache[0x%08h] = 0x%08h", label, byte_addr, got);
+            pass_count++;
+        end else begin
+            $display("  FAIL  %-20s  dcache[0x%08h]  expected=0x%08h  got=0x%08h",
+                     label, byte_addr, expected, got);
+            fail_count++;
+        end
+    endtask
+
     // Cacheless: check backing store directly
     task automatic check_dmem (
         input logic [31:0] byte_addr,
@@ -206,8 +240,8 @@ module core_riscv_tb();
         check_reg( 5, 32'd42,  "add x5=42");
         check_reg( 6, 32'd99,  "lw x6=99");
         check_reg( 7, 32'd57,  "sub x7=57");
-        check_dmem(32'h00000064, 32'd42, "sw x2->mem[100]");
-        check_dmem(32'h00000068, 32'd99, "sw x3->mem[104]");
+        check_dcache(32'h00000064, 32'd42, "sw x2->mem[100]");
+        check_dcache(32'h00000068, 32'd99, "sw x3->mem[104]");
 
         // 3. branch penalty checks
         // check_reg( 1, 32'd5, "addi x1=5");
@@ -251,12 +285,11 @@ module core_riscv_tb();
         @(posedge rst_n);
         forever begin
             @(posedge clk);
-            $display("[T=%0t] PC=%08h INSTR=%08h | fwd_a=%b fwd_b=%b | mem_rd=x%0d mem_rw=%b | wb_rd=x%0d | mem_stall=%b fetch_stall=%b",
-                $time, debug_pc, debug_instr,
-                dut.forward_a, dut.forward_b,
-                dut.mem_rd, dut.mem_reg_write,
-                dut.wb_rd,
-                dut.mem_stall, dut.fetch_stall);
+            $display("[T=%0t] PC=%08h INSTR=%08h | mem_rd=x%0d mem_rw=%b mem_mw=%b | dmem_wr=%b | mem_stall=%b fetch_stall=%b",
+            $time, debug_pc, debug_instr,
+            dut.mem_rd, dut.mem_reg_write, dut.mem_mem_write,
+            dut.dmem_wr_en,
+            dut.mem_stall, dut.fetch_stall);
         end
     end
 

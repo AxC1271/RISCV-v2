@@ -7,42 +7,42 @@ module data_cache # (
     parameter DATA_WIDTH = 32,
     parameter NUM_WAYS   = 2
 )(
-    input  logic                  clk,
-    input  logic                  rst_n,
-    input  logic [ADDR_WIDTH-1:0] addr,
-    input  logic [DATA_WIDTH-1:0] wr_data,
-    input  logic                  rd_en,
-    input  logic                  wr_en,
+    input logic clk,
+    input logic rst_n,
+    input logic [ADDR_WIDTH-1:0] addr,
+    input logic [DATA_WIDTH-1:0] wr_data,
+    input logic rd_en,
+    input logic wr_en,
     output logic [DATA_WIDTH-1:0] rd_data,
-    output logic                  ready,
+    output logic ready,
     output logic [ADDR_WIDTH-1:0] mem_addr,
     output logic [DATA_WIDTH-1:0] mem_wr_data,
-    output logic                  mem_rd_en,
-    output logic                  mem_wr_en,
-    input  logic [DATA_WIDTH-1:0] mem_rd_data,
-    input  logic                  mem_ready
+    output logic mem_rd_en,
+    output logic mem_wr_en,
+    input logic [DATA_WIDTH-1:0] mem_rd_data,
+    input logic mem_ready
 );
-    localparam BLOCK_WORDS    = BLOCK_SIZE / 4;
-    localparam TOTAL_BLOCKS   = CACHE_SIZE / BLOCK_SIZE;
-    localparam NUM_SETS       = TOTAL_BLOCKS / NUM_WAYS;
+    localparam BLOCK_WORDS = BLOCK_SIZE / 4;
+    localparam TOTAL_BLOCKS = CACHE_SIZE / BLOCK_SIZE;
+    localparam NUM_SETS = TOTAL_BLOCKS / NUM_WAYS;
     localparam SET_INDEX_BITS = $clog2(NUM_SETS);
-    localparam OFFSET_BITS    = $clog2(BLOCK_SIZE);
-    localparam WORD_OFF_BITS  = $clog2(BLOCK_WORDS);
-    localparam TAG_BITS       = ADDR_WIDTH - SET_INDEX_BITS - OFFSET_BITS;
+    localparam OFFSET_BITS = $clog2(BLOCK_SIZE);
+    localparam WORD_OFF_BITS = $clog2(BLOCK_WORDS);
+    localparam TAG_BITS = ADDR_WIDTH - SET_INDEX_BITS - OFFSET_BITS;
 
-    logic [TAG_BITS-1:0]       tag;
+    logic [TAG_BITS-1:0] tag;
     logic [SET_INDEX_BITS-1:0] set_index;
-    logic [WORD_OFF_BITS-1:0]  word_offset;
+    logic [WORD_OFF_BITS-1:0] word_offset;
 
-    assign tag         = addr[ADDR_WIDTH-1 : SET_INDEX_BITS+OFFSET_BITS];
-    assign set_index   = addr[SET_INDEX_BITS+OFFSET_BITS-1 : OFFSET_BITS];
+    assign tag = addr[ADDR_WIDTH-1 : SET_INDEX_BITS+OFFSET_BITS];
+    assign set_index = addr[SET_INDEX_BITS+OFFSET_BITS-1 : OFFSET_BITS];
     assign word_offset = addr[OFFSET_BITS-1 : 2];
 
-    logic [TAG_BITS-1:0]       miss_tag;
+    logic [TAG_BITS-1:0] miss_tag;
     logic [SET_INDEX_BITS-1:0] miss_set;
-    logic [WORD_OFF_BITS-1:0]  miss_word_offset;
-    logic                      miss_wr_en;
-    logic [DATA_WIDTH-1:0]     miss_wr_data;
+    logic [WORD_OFF_BITS-1:0] miss_word_offset;
+    logic miss_wr_en;
+    logic [DATA_WIDTH-1:0] miss_wr_data;
 
     logic [DATA_WIDTH-1:0] data_array  [NUM_SETS-1:0][NUM_WAYS-1:0][BLOCK_WORDS-1:0];
     logic [TAG_BITS-1:0]   tag_array   [NUM_SETS-1:0][NUM_WAYS-1:0];
@@ -53,14 +53,14 @@ module data_cache # (
     logic hit_way0, hit_way1, hit, hit_way;
     assign hit_way0 = valid_array[set_index][0] && (tag_array[set_index][0] == tag);
     assign hit_way1 = valid_array[set_index][1] && (tag_array[set_index][1] == tag);
-    assign hit      = hit_way0 || hit_way1;
+    assign hit = hit_way0 || hit_way1;
     assign hit_way  = hit_way1 ? 1'b1 : 1'b0;
 
     logic replace_way;
     always_comb begin
-        if      (!valid_array[set_index][0]) replace_way = 1'b0;
+        if (!valid_array[set_index][0]) replace_way = 1'b0;
         else if (!valid_array[set_index][1]) replace_way = 1'b1;
-        else                                 replace_way = lru_array[set_index];
+        else replace_way = lru_array[set_index];
     end
 
     typedef enum logic [1:0] {
@@ -69,10 +69,10 @@ module data_cache # (
         ALLOCATE   = 2'd2
     } state_t;
 
-    state_t                   state;
+    state_t state;
     logic [WORD_OFF_BITS-1:0] word_counter;
-    logic                     current_way;
-    logic [DATA_WIDTH-1:0]    refill_data [BLOCK_WORDS-1:0];
+    logic current_way;
+    logic [DATA_WIDTH-1:0] refill_data [BLOCK_WORDS-1:0];
 
     always_comb begin
         mem_rd_en   = 1'b0;
