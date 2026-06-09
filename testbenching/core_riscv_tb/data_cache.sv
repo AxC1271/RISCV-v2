@@ -63,6 +63,17 @@ module data_cache # (
         else replace_way = lru_array[set_index];
     end
 
+    logic in_progress;
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
+            in_progress <= 1'b0;
+        else if (state == IDLE && (rd_en || wr_en) && !hit && !in_progress)
+            in_progress <= 1'b1;
+        else if (ready)
+            in_progress <= 1'b0;
+    end
+
     typedef enum logic [1:0] {
         IDLE       = 2'd0,
         WRITE_BACK = 2'd1,
@@ -117,7 +128,7 @@ module data_cache # (
             ready <= 1'b0;
             case (state)
                 IDLE: begin
-                    if (rd_en || wr_en) begin
+                    if ((rd_en || wr_en) && !in_progress) begin
                         if (hit) begin
                             if (wr_en) begin
                                 data_array[set_index][hit_way][word_offset] <= wr_data;
