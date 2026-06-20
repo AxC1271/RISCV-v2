@@ -239,6 +239,7 @@ module core_riscv_tb();
         // check_reg( 8, 32'd68,  "and x8=68");
 
         // 2. load-use hazard checks
+        check_reg( 3, 32'd99,  "addi x3=99");
         check_reg( 4, 32'd42,  "lw x4=42");
         check_reg( 5, 32'd42,  "add x5=42");
         check_reg( 6, 32'd99,  "lw x6=99");
@@ -288,11 +289,31 @@ module core_riscv_tb();
         @(posedge rst_n);
         forever begin
             @(posedge clk);
-            $display("[T=%0t] PC=%08h INSTR=%08h | mem_rd=x%0d mem_rw=%b mem_mw=%b | dmem_wr=%b | mem_stall=%b fetch_stall=%b",
-            $time, debug_pc, debug_instr,
-            dut.mem_rd, dut.mem_reg_write, dut.mem_mem_write,
-            dut.dmem_wr_en,
-            dut.mem_stall, dut.fetch_stall);
+            $display("[T=%0t] | IF: PC=%08h | ID: %08h | EX: rd=x%0d mrd=%b mwr=%b | MEM: rd=x%0d mrd=%b mwr=%b mw=%b | WB: rd=x%0d rw=%b | stall=%b flush_idex=%b mem_stall=%b fetch_stall=%b dcache_rdy=%b",
+                $time,
+                // IF stage
+                dut.pc_current,
+                // ID stage
+                dut.id_instr,
+                // EX stage
+                dut.ex_rd,
+                dut.ex_mem_read,
+                dut.ex_mem_write,
+                // MEM stage
+                dut.mem_rd,
+                dut.mem_mem_read,
+                dut.mem_mem_write,
+                dut.mem_reg_write,
+                // WB stage
+                dut.wb_rd,
+                dut.wb_reg_write,
+                // control signals
+                dut.stall,
+                dut.flush_id_ex,
+                dut.mem_stall,
+                dut.fetch_stall,
+                dut.dcache_ready
+            );
         end
     end
 

@@ -26,9 +26,9 @@ module core_riscv (
     // program counter
     logic [31:0] pc_current, pc_next;
 
-    // if/id stage
-    logic [31:0] if_pc, id_pc, ex_pc;
-    logic [31:0] if_instr, id_instr;
+    // pipeline stage signals
+    logic [31:0] id_pc, ex_pc;
+    logic [31:0] id_instr;
 
     // ex stage
     logic [31:0] ex_rs1_data, ex_rs2_data, ex_immediate;
@@ -147,35 +147,14 @@ module core_riscv (
     assign icache_cpu_addr = pc_current;
     assign icache_cpu_req  = cpu_enable;
 
-    // IF stage registers: latch pc and instruction together only
-    // when the icache signals a valid result, using pc_current so
-    // the PC matches the request that produced this instruction
-    logic [31:0] if_pc_r;
-    logic [31:0] if_instr_r;
-
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            if_pc_r    <= 32'h0;
-            if_instr_r <= 32'h00000013;
-        end else if (branch_taken) begin
-            if_pc_r    <= 32'h0;
-            if_instr_r <= 32'h00000013;
-        end else if (icache_cpu_ready && !stall && !fetch_stall && !mem_stall) begin
-            if_pc_r    <= pc_current;
-            if_instr_r <= icache_cpu_rdata;
-        end
-    end
-
-    assign if_pc = if_pc_r;
-    assign if_instr = if_instr_r;
-
+    // IF/ID: wired directly from I-cache output, no intermediate latch
     ifid_register ifid (
         .clk(clk),
         .rst_n(rst_n),
         .stall(fetch_stall || stall || mem_stall),
         .flush(branch_taken),
-        .if_pc(if_pc),
-        .if_instruction(if_instr),
+        .if_pc(pc_current),
+        .if_instruction(icache_cpu_rdata),
         .id_pc(id_pc),
         .id_instruction(id_instr)
     );
