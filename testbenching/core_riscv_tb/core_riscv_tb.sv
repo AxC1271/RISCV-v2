@@ -159,7 +159,7 @@ module core_riscv_tb();
         end
     endtask
 
-    task automatic check_dcache(
+    task automatic check_dcache (
         input logic [31:0] byte_addr,
         input logic [31:0] expected,
         input string       label
@@ -239,6 +239,7 @@ module core_riscv_tb();
         // check_reg( 8, 32'd68,  "and x8=68");
 
         // 2. load-use hazard checks
+        check_reg( 2, 32'd42,  "addi x2=42");
         check_reg( 3, 32'd99,  "addi x3=99");
         check_reg( 4, 32'd42,  "lw x4=42");
         check_reg( 5, 32'd42,  "add x5=42");

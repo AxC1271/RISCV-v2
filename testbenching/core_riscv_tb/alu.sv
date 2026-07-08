@@ -1,11 +1,9 @@
-`timescale 1ns / 1ps
-
-module arith_logic_unit (
+module alu (
     input logic [31:0] a,
     input logic [31:0] b,
-    input logic [3:0]  alu_op,  
-    output logic [31:0] result,
-    output logic zero_flag
+    input logic [3:0]  alu_opcode,  
+    output logic [31:0] res,
+
 );
 
     localparam logic [3:0] ALU_ADD  = 4'b0000;  // add
@@ -19,12 +17,8 @@ module arith_logic_unit (
     localparam logic [3:0] ALU_SLT  = 4'b0010;  // slt
     localparam logic [3:0] ALU_SLTU = 4'b0011;  // slt (unsigned)
 
-    // assign zero flag 
-    assign zero_flag = (result == 32'h0);
-
-    // define the switch case for the alu
     always_comb begin
-        case (alu_op)
+        case (alu_opcode)
             ALU_ADD:  result = a + b;
             ALU_SUB:  result = a - b;
             ALU_AND:  result = a & b;
@@ -35,7 +29,7 @@ module arith_logic_unit (
             ALU_SRA:  result = $signed(a) >>> b[4:0];
             ALU_SLT:  result = ($signed(a) < $signed(b)) ? 32'd1 : 32'd0;
             ALU_SLTU: result = (a < b) ? 32'd1 : 32'd0;                    
-            default:  result = 32'h0;  // invalid operation
+            default:  result = 32'h0; 
         endcase
     end
 

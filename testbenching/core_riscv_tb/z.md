@@ -1,3 +1,39 @@
+# Debugging Report
+
+## RISC-V Assembly Payload
+
+```
+32'h06400093; // addi x1, x0, 100    # base = 100
+32'h02A00113; // addi x2, x0, 42     # val = 42
+32'h0020A023; // sw   x2, 0(x1)      # mem[100] = 42
+32'h06300193; // addi x3, x0, 99     # val = 99
+32'h0030A223; // sw   x3, 4(x1)      # mem[104] = 99
+32'h0000A203; // lw   x4, 0(x1)      # x4 = 42
+32'h000202B3; // add  x5, x4, x0     # x5 = x4  (load-use stall)
+32'h0040A303; // lw   x6, 4(x1)      # x6 = 99
+32'h404303B3; // sub  x7, x6, x4     # x7 = 57
+```
+
+Based on looking at this code, we can derive by hand the following outputs:
+
+```
+x1 = 100
+x2 = 42
+x3 = 99
+x4 = 42
+x5 = 42
+x6 = 99
+x7 = 57
+
+mem[100] = 42
+mem[104] = 99
+```
+
+---
+
+## Simulation Results
+
+```
 [T=55000] | IF: PC=00000000 | ID: 00000000 | EX: rd=x0 mrd=0 mwr=0 | MEM: rd=x0 mrd=0 mwr=0 mw=0 | WB: rd=x0 rw=0 | stall=0 flush_idex=0 mem_stall=0 fetch_stall=0 dcache_rdy=0
 
 [TB] CPU running...
@@ -202,6 +238,7 @@
 [T=2045000] | IF: PC=00000154 | ID: 00000013 | EX: rd=x0 mrd=0 mwr=0 | MEM: rd=x0 mrd=0 mwr=0 mw=1 | WB: rd=x0 rw=1 | stall=0 flush_idex=0 mem_stall=0 fetch_stall=1 dcache_rdy=0
 [T=2055000] | IF: PC=00000154 | ID: 00000013 | EX: rd=x0 mrd=0 mwr=0 | MEM: rd=x0 mrd=0 mwr=0 mw=1 | WB: rd=x0 rw=1 | stall=0 flush_idex=0 mem_stall=0 fetch_stall=1 dcache_rdy=0
 [T=2065000] | IF: PC=00000154 | ID: 00000013 | EX: rd=x0 mrd=0 mwr=0 | MEM: rd=x0 mrd=0 mwr=0 mw=1 | WB: rd=x0 rw=1 | stall=0 flush_idex=0 mem_stall=0 fetch_stall=1 dcache_rdy=0
+  PASS  addi x2=42            x2                    = 0x0000002a
   PASS  addi x3=99            x3                    = 0x00000063
   PASS  lw x4=42              x4                    = 0x0000002a
   PASS  add x5=42             x5                    = 0x0000002a
@@ -211,6 +248,67 @@
   FAIL  sw x3->mem[104]       dcache[0x00000068]  expected=0x00000063  got=0x00000000
 
 ========== SUMMARY ==========
-PASS: 4   FAIL: 3   TOTAL: 7
+PASS: 5   FAIL: 3   TOTAL: 8
 SOME TESTS FAILED -- check pipeline/forwarding/memory
-core_riscv_tb.sv:277: $finish called at 2065000 (1ps)
+core_riscv_tb.sv:278: $finish called at 2065000 (1ps)
+```
+
+Referencing the RISC-V assembly again:
+
+```
+32'h06400093; // addi x1, x0, 100    # passed
+32'h02A00113; // addi x2, x0, 42     # passed
+32'h0020A023; // sw   x2, 0(x1)      # passed
+32'h06300193; // addi x3, x0, 99     # passed
+32'h0030A223; // sw   x3, 4(x1)      # stored 0?
+32'h0000A203; // lw   x4, 0(x1)      # passed
+32'h000202B3; // add  x5, x4, x0     # load-use passed
+32'h0040A303; // lw   x6, 4(x1)      # returned 0
+32'h404303B3; // sub  x7, x6, x4     # became -42 since x6 got 0
+
+---
+
+x1 = 100
+x2 = 42
+x3 = 99
+x4 = 42
+x5 = 42
+x6 = 0 
+x7 = -42
+
+mem[100] = 42
+mem[104] = 0
+```
+We can observe a couple of issues by breaking down what we got compared to the ideal result. We can trace that the addi instructions for x1 and x2 worked as expected. Based on testbench 1, we were able to verify that forwarding is fine, so back-to-back addi/add instructions shouldn't cause issues even with RAW dependencies. The issue is the store instruction. We know x3 is 99, yet when we perform a store instruction to memory location 104, the value at that subsequent memory address is 0. When we perform a lw instruction to x6 from that same memory address, we get zero. But why? The issue can't be x3, but rather a more subtle structural bug.
+
+- Did it get squashed along the pipeline because the next pipeline was still stalled? Could subtle cache timing mismatches cause the instruction to get lost? Is it encoded wrong? Did it write to a different cache line in the D-cache? I find the former to be a more convincing issue.
+
+---
+
+## Troubleshooting
+
+Let's take a look at the pipeline trace. If we want to see whether it showed up in the pipeline at all, let's reference the hexadecimal value of the sw instruction which is `32'h0030A223` (sw x3, 4(x1)) at PC address 0x10. The previous instruction is `32'h06300193`, which was addi x3, x0, 99.
+
+```
+[T=135000] | IF: PC=00000004 | ID: 06400093 | EX: rd=x0 mrd=0 mwr=0 | MEM: rd=x0 mrd=0 mwr=0 mw=0 | WB: rd=x0 rw=0 | stall=0 flush_idex=0 mem_stall=0 fetch_stall=0 dcache_rdy=0
+[T=145000] | IF: PC=00000008 | ID: 06400093 | EX: rd=x1 mrd=0 mwr=0 | MEM: rd=x0 mrd=0 mwr=0 mw=0 | WB: rd=x0 rw=0 | stall=0 flush_idex=0 mem_stall=0 fetch_stall=0 dcache_rdy=0
+[T=155000] | IF: PC=0000000c | ID: 02a00113 | EX: rd=x1 mrd=0 mwr=0 | MEM: rd=x1 mrd=0 mwr=0 mw=1 | WB: rd=x0 rw=0 | stall=0 flush_idex=0 mem_stall=0 fetch_stall=0 dcache_rdy=0
+[T=165000] | IF: PC=00000010 | ID: 0020a023 | EX: rd=x2 mrd=0 mwr=0 | MEM: rd=x1 mrd=0 mwr=0 mw=1 | WB: rd=x1 rw=1 | stall=0 flush_idex=0 mem_stall=0 fetch_stall=0 dcache_rdy=0
+[T=175000] | IF: PC=00000014 | ID: 06300193 | EX: rd=x0 mrd=0 mwr=1 | MEM: rd=x2 mrd=0 mwr=0 mw=1 | WB: rd=x1 rw=1 | stall=0 flush_idex=0 mem_stall=0 fetch_stall=1 dcache_rdy=0
+[T=185000] | IF: PC=00000014 | ID: 06300193 | EX: rd=x3 mrd=0 mwr=0 | MEM: rd=x0 mrd=0 mwr=1 mw=0 | WB: rd=x2 rw=1 | stall=1 flush_idex=1 mem_stall=1 fetch_stall=1 dcache_rdy=0
+[T=195000] | IF: PC=00000014 | ID: 06300193 | EX: rd=x0 mrd=0 mwr=0 | MEM: rd=x0 mrd=0 mwr=1 mw=0 | WB: rd=x0 rw=0 | stall=1 flush_idex=1 mem_stall=1 fetch_stall=1 dcache_rdy=0
+[T=205000] | IF: PC=00000014 | ID: 06300193 | EX: rd=x0 mrd=0 mwr=0 | MEM: rd=x0 mrd=0 mwr=1 mw=0 | WB: rd=x0 rw=0 | stall=1 flush_idex=1 mem_stall=1 fetch_stall=1 dcache_rdy=0
+[T=215000] | IF: PC=00000014 | ID: 06300193 | EX: rd=x0 mrd=0 mwr=0 | MEM: rd=x0 mrd=0 mwr=1 mw=0 | WB: rd=x0 rw=0 | stall=1 flush_idex=1 mem_stall=1 fetch_stall=1 dcache_rdy=0
+[T=225000] | IF: PC=00000014 | ID: 06300193 | EX: rd=x0 mrd=0 mwr=0 | MEM: rd=x0 mrd=0 mwr=1 mw=0 | WB: rd=x0 rw=0 | stall=1 flush_idex=1 mem_stall=1 fetch_stall=0 dcache_rdy=0
+[T=235000] | IF: PC=00000014 | ID: 06300193 | EX: rd=x0 mrd=0 mwr=0 | MEM: rd=x0 mrd=0 mwr=1 mw=0 | WB: rd=x0 rw=0 | stall=1 flush_idex=1 mem_stall=1 fetch_stall=1 dcache_rdy=0
+[T=245000] | IF: PC=00000014 | ID: 06300193 | EX: rd=x0 mrd=0 mwr=0 | MEM: rd=x0 mrd=0 mwr=1 mw=0 | WB: rd=x0 rw=0 | stall=0 flush_idex=0 mem_stall=0 fetch_stall=1 dcache_rdy=1
+[T=255000] | IF: PC=00000014 | ID: 06300193 | EX: rd=x3 mrd=0 mwr=0 | MEM: rd=x0 mrd=0 mwr=0 mw=0 | WB: rd=x0 rw=0 | stall=0 flush_idex=0 mem_stall=0 fetch_stall=0 dcache_rdy=0
+[T=265000] | IF: PC=00000018 | ID: 0000a203 | EX: rd=x3 mrd=0 mwr=0 | MEM: rd=x3 mrd=0 mwr=0 mw=1 | WB: rd=x0 rw=0 | stall=0 flush_idex=0 mem_stall=0 fetch_stall=0 dcache_rdy=0
+```
+
+Another hypothesis that could be the issue; maybe the S-type formatting might give it issues for detecting a RAW hazard here. We had an addi instruction that hasn't retired by the time that store instruction is supposed to execute, which could be why the store sees a stale value of x3 (0 instead of 99).
+
+---
+
+
+
