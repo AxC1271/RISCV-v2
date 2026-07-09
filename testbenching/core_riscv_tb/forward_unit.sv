@@ -1,50 +1,39 @@
-`timescale 1ns / 1ps
-
 module forward_unit (
-    // curr instruction in ex stage
-    input logic [4:0] ex_rs1,        
-    input logic [4:0] ex_rs2,        
-    
-    // curr instruction in mem stage
-    input logic [4:0] mem_rd,       
-    input logic mem_reg_write,       
-    
-    // instruction in WB stage
-    input logic [4:0] wb_rd,         
-    input logic wb_reg_write,       
-    
-    output logic [1:0] forward_a, // forward for rs1
-    output logic [1:0] forward_b  // forward for rs2
+    input  logic[4:0] idex_rs1,
+    input  logic[4:0] idex_rs2,
+
+    input  logic[4:0] exmem_rd,
+    input  logic      exmem_regwrite,
+
+    input  logic[4:0] memwb_rd,
+    input  logic      memwb_regwrite,
+
+    output logic[1:0] forward_a,
+    output logic[1:0] forward_b
 );
 
-    // forward A (for rs1)
+    // encoding for forward select
+    // 2'b00 = no forwarding (use idex register value)
+    // 2'b01: forward memwb (use wb stage result)
+    // 2'b10: forward exmem (use mem stage result)
+
     always_comb begin
-        // priority: mem > wb > none
-        
-        // mem hazard (most recent)
-        if (mem_reg_write && (mem_rd != 0) && (mem_rd == ex_rs1)) begin
-            forward_a = 2'b10;  // forward from mem stage
+        // default case: don't forward
+        forward_a = 2'b00;
+        forward_b = 2'b00;
+
+        // hazard for forward_a
+        if (idex_rs1 == exmem_rd && exmem_regwrite && exmem_rd != 5'b00000) begin
+            forward_a = 2'b10;
+        end else if (idex_rs1 == memwb_rd && memwb_regwrite && memwb_rd != 5'b00000) begin
+            forward_a = 2'b01;
         end
-        // writeback hazard (less recent)
-        else if (wb_reg_write && (wb_rd != 0) && (wb_rd == ex_rs1)) begin
-            forward_a = 2'b01;  // forward from wb stage
-        end
-        // no hazard
-        else begin
-            forward_a = 2'b00;  // no forwarding
-        end
-    end
-    
-    // forward B (for rs2)
-    always_comb begin
-        if (mem_reg_write && (mem_rd != 0) && (mem_rd == ex_rs2)) begin
+
+        // hazard for forward_b
+        if (idex_rs2 == exmem_rd && exmem_regwrite && exmem_rd != 5'b00000) begin
             forward_b = 2'b10;
-        end
-        else if (wb_reg_write && (wb_rd != 0) && (wb_rd == ex_rs2)) begin
+        end else if (idex_rs2 == memwb_rd && memwb_regwrite && memwb_rd != 5'b00000) begin
             forward_b = 2'b01;
-        end
-        else begin
-            forward_b = 2'b00;
         end
     end
 

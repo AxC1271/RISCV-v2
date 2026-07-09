@@ -1,5 +1,3 @@
-`timescale 1ns / 1ps
-
 module register_file (
     input  logic clk,
     input  logic rst_n,
@@ -13,7 +11,7 @@ module register_file (
     // write port
     input  logic[4:0]  wr_addr,
     input  logic[31:0] wr_data,
-    input  logic       reg_write,
+    input  logic       reg_write
 );
 
     logic[31:0] registers [0:31];
@@ -28,7 +26,7 @@ module register_file (
                 registers[i] <= 32'h0;
             end
         end else begin
-            if (wr_en && wr_addr != 5'b00000) begin
+            if (reg_write && wr_addr != 5'b00000) begin
                 registers[wr_addr] <= wr_data;
             end
         end

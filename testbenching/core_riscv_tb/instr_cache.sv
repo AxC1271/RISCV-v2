@@ -1,67 +1,81 @@
-`timescale 1ns / 1ps
 module instr_cache # (
-    parameter DEPTH = 256
-)(
-    input  logic        clk,
-    input  logic        rst_n,
-    input  logic [31:0] cpu_addr,
-    input  logic        cpu_req,
-    input logic         mem_stall,
-    output logic [31:0] cpu_rdata,
-    output logic        cpu_ready,
-    output logic [31:0] mem_addr,
-    output logic        mem_req,
-    input  logic [31:0] mem_rdata,
-    input  logic        mem_ready
+    parameter NUM_SETS       = 64,
+    parameter WORDS_PER_LINE = 4,
+    parameter ADDR_BITS      = 32,
+) (
+    input  logic       clk,
+    input  logic       rst_n,
+    input  logic[31:0] cpu_addr,
+    input  logic       cpu_req,
+    output logic[31:0] cpu_rdata,
+    output logic       cache_ready,
+    output logic[31:0] mem_addr,
+    output logic       mem_req,
+    input  logic[31:0] mem_rdata,
+    input  logic       mem_ready
 );
-    logic [21:0] tag_ram   [0:63];
-    logic        valid_ram [0:63];
-    logic [31:0] cache_ram [0:63][0:3];
-    logic [21:0] addr_tag;
-    logic [5:0]  addr_index;
-    logic [1:0]  addr_offset;
-    assign addr_tag    = cpu_addr[31:10];
-    assign addr_index  = cpu_addr[9:4];
-    assign addr_offset = cpu_addr[3:2];
-    logic [21:0] miss_tag;
-    logic [5:0]  miss_index;
-    logic [1:0]  miss_offset;
+    localparam OFFSET_BITS = $clog2(WORDS_PER_LINE);
+    localparam INDEX_BITS  = $clog2(NUM_SETS);
+    localparam BYTE_BITS   = 2;
+    localparam TAG_BITS    = ADDR_BITS - INDEX_BITS - OFFSET_BITS - BYTE_BITS;
+    localparam REFILL_BITS = $clog2(WORDS_PER_LINE);
+
+    logic[TAG_BITS-1:0] tag_ram   [0:NUM_SETS-1];
+    logic               valid_ram [0:NUM_SETS-1];
+    logic[31:0]         cache_ram [0:NUM_SETS-1][0:WORDS_PER_LINE-1];
+
+    logic[TAG_BITS-1:0]    addr_tag;
+    logic[INDEX_BITS-1:0]  addr_index;
+    logic[OFFSET_BITS-1:0] addr_offset;
+
+    assign addr_tag    = cpu_addr[ADDR_BITS-1:INDEX_BITS+OFFSET_BITS+BYTE_BITS];
+    assign addr_index  = cpu_addr[INDEX_BITS+OFFSET_BITS+BYTE_BITS-1:OFFSET_BITS+BYTE_BITS];
+    assign addr_offset = cpu_addr[OFFSET_BITS+BYTE_BITS-1:BYTE_BITS];
+    
     logic hit;
     assign hit = valid_ram[addr_index] && (tag_ram[addr_index] == addr_tag);
+
     typedef enum logic [1:0] {
         IDLE   = 2'd0,
         REFILL = 2'd1
-    } state_t;
-    state_t      state;
-    logic [1:0]  refill_count;
-    logic [31:0] hit_data_r;
-    logic        cpu_ready_r;
-    always_ff @(posedge clk or negedge rst_n) begin
+    } cache_state;
+
+    cache_state state;
+    logic[REFILL_BITS-1:0] refill_count;
+
+    logic[TAG_BITS-1:0]    miss_tag;
+    logic[INDEX_BITS-1:0]  miss_index;
+    logic[OFFSET_BITS-1:0] miss_offset;
+
+    logic[31:0] hit_data_r;
+    logic       cache_ready_r;
+
+    always_ff @(posedge clk) begin
         if (!rst_n) begin
-            state        <= IDLE;
-            refill_count <= 2'd0;
-            miss_tag     <= '0;
-            miss_index   <= '0;
-            miss_offset  <= '0;
-            hit_data_r   <= '0;
-            cpu_ready_r  <= 1'b0;
-            for (int i = 0; i < 64; i++)
+            state         <= IDLE;
+            refill_count  <= '0;
+            miss_tag      <= '0;
+            miss_index    <= '0;
+            miss_offset   <= '0;
+            hit_data_r    <= '0;
+            cache_ready_r <= 1'b0;
+            for (int i = 0; i < NUM_SETS; i++) 
                 valid_ram[i] <= 1'b0;
         end else begin
-            cpu_ready_r <= 1'b0; // default deassert
-            case (state)
+
+            cache_ready_r <= 1'b0; 
+
+            case(state) 
                 IDLE: begin
-                    if (!mem_stall && cpu_req) begin
+                    if (cpu_req) begin
                         if (hit) begin
-                            // hit: return data and pulse ready, stay in IDLE
-                            hit_data_r  <= cache_ram[addr_index][addr_offset];
-                            cpu_ready_r <= 1'b1;
+                            hit_data_r    <= cache_ram[addr_index][addr_offset];
+                            cache_ready_r <= 1'b1;
                         end else begin
-                            // miss: latch request and start refill
                             miss_tag     <= addr_tag;
                             miss_index   <= addr_index;
                             miss_offset  <= addr_offset;
-                            refill_count <= 2'd0;
+                            refill_count <= '0;
                             state        <= REFILL;
                         end
                     end
@@ -70,27 +84,23 @@ module instr_cache # (
                     if (mem_ready) begin
                         cache_ram[miss_index][refill_count] <= mem_rdata;
                         
-                        // Capture immediately when target word arrives
                         if (refill_count == miss_offset)
                             hit_data_r <= mem_rdata;
-                            
-                        if (refill_count == 2'd3) begin
+                        
+                        if (refill_count == WORDS_PER_LINE-1) begin
                             tag_ram[miss_index]   <= miss_tag;
                             valid_ram[miss_index] <= 1'b1;
-                            // hit_data_r already set above; no refill lookup needed
-                            cpu_ready_r <= 1'b1;
-                            state       <= IDLE;
-                        end else begin
-                            refill_count <= refill_count + 2'd1;
+                            cache_ready_r         <= 1'b1;
+                            state                 <= IDLE;
+                        end else begin 
+                            refill_count <= refill_count + 1'b1;
                         end
                     end
                 end
+
                 default: state <= IDLE;
+
             endcase
         end
     end
-    assign mem_req   = (state == REFILL);
-    assign mem_addr  = {miss_tag, miss_index, refill_count, 2'b00};
-    assign cpu_ready = cpu_ready_r;
-    assign cpu_rdata = hit_data_r;
 endmodule

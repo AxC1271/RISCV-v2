@@ -1,53 +1,52 @@
-`timescale 1ns / 1ps
-
 module immediate_generator (
-    input logic [31:0] instruction,
-    output logic [31:0] immediate
+    input  logic[31:0] instr,
+    output logic[31:0] imm
 );
 
-    logic [6:0] opcode;
+    localparam OPCODE_R      = 7'b0110011;
+    localparam OPCODE_I_LOAD = 7'b0000011;
+    localparam OPCODE_I_REG  = 7'b0010011;
+    localparam OPCODE_S      = 7'b0100011;
+    localparam OPCODE_B      = 7'b1100011;
+    localparam OPCODE_U      = 7'b0110111;
+    localparam OPCODE_J      = 7'b1101111;
+    localparam OPCODE_JALR   = 7'b1100111;
 
     always_comb begin
-        opcode = instruction[6:0];
+        case(instr[6:0])
+            OPCODE_R: begin
+                imm = 32'b0;
+            end
 
-        case (opcode)
+            OPCODE_I_LOAD: begin
+                imm = {{20{instr[31]}}, instr[31:20]};
+            end
 
-            // I-type: ADDI, LW, JALR, etc.
-            7'b0010011, // OP-IMM
-            7'b0000011, // LOAD
-            7'b1100111: // JALR
-                immediate = {{20{instruction[31]}}, instruction[31:20]};
+            OPCODE_I_REG: begin
+                imm = {{20{instr[31]}}, instr[31:20]};
+            end
 
-            // S-type: SW
-            7'b0100011:
-                immediate = {{20{instruction[31]}}, instruction[31:25], instruction[11:7]};
+            OPCODE_S: begin
+                imm = {{20{instr[31]}}, instr[31:25], instr[11:7]};
+            end
 
-            // B-type: BEQ, BNE, etc.
-            7'b1100011:
-                immediate = {{19{instruction[31]}},
-                             instruction[31],
-                             instruction[7],
-                             instruction[30:25],
-                             instruction[11:8],
-                             1'b0};
+            OPCODE_B: begin
+                imm = {{20{instr[31]}}, instr[7], instr[30:25], instr[11:8], 1'b0};
+            end
 
-            // U-type: LUI, AUIPC
-            7'b0110111, // LUI
-            7'b0010111: // AUIPC
-                immediate = {instruction[31:12], 12'b0};
+            OPCODE_U: begin
+                imm = {instr[31:12], 12'b0};
+            end
 
-            // J-type: JAL
-            7'b1101111:
-                immediate = {{11{instruction[31]}},
-                             instruction[31],
-                             instruction[19:12],
-                             instruction[20],
-                             instruction[30:21],
-                             1'b0};
+            OPCODE_J: begin
+                imm = {{12{instr[31]}}, instr[19:12], instr[20], instr[30:21], 1'b0};
+            end
 
-            default:
-                immediate = 32'b0;
+            OPCODE_JALR: begin
+                imm = {{20{instr[31]}}, instr[31:20]};
+            end
+
+            default: imm = 32'b0;
         endcase
     end
-
 endmodule

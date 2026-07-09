@@ -1,5 +1,3 @@
-`timescale 1ns / 1ps
-
 module branch_unit (
     input logic [31:0] rs1_data,
     input logic [31:0] rs2_data,

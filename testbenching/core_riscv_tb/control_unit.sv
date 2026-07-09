@@ -1,5 +1,5 @@
 module control_unit (
-    logic logic[31:0] instruction,
+    input logic[31:0] instruction,
 
     output logic[3:0] alu_opcode,
     output logic alusrc,
