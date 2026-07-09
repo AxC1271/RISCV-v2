@@ -39,13 +39,7 @@ I'm still implementing the RISC-V processor, much like my old processor. However
 - Immediate Generator
 - Pipelining Registers
 
-The memory and datapaths will be instantiated separately from the `RISC-V core` at the very top module.
-
----
-
-## Video Demo
-
-As of April 17th, 2026, I'm testbenching the RISC-V core and working on the AXI-Lite implementation. I'm aiming on recording a video demo which shows the SoC doing some basic UART as well as reading data from a temperature sensor using SPI before sending a serial stream of instructions using Python to program the FPGA as if it were a microcontroller.
+The memory and datapaths will be instantiated separately from the `RISC-V core` at the very top module. To find more information about these modules, please look in `verification` for the actual RTL source code.
 
 ---
 
