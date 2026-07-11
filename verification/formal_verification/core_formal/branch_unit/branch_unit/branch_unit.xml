@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+<testsuite timestamp="2026-07-11T12:58:33" hostname="Andrews-MacBook-Pro-12.local" package="branch_unit" id="0" name="default" tests="14" errors="0" failures="0" time="0" skipped="4">
+<properties>
+<property name="os" value="Darwin"/>
+<property name="expect" value="PASS"/>
+<property name="status" value="PASS"/>
+</properties>
+<testcase classname="default" name="build execution" time="0">
+</testcase>
+<testcase classname="default" name="Property ASSERT in branch_unit at branch_unit.sv:36.13-36.71" time="0" type="ASSERT" location="branch_unit.sv:36.13-36.71" id="_witness_.check_assert_branch_unit_sv_36_12">
+</testcase>
+<testcase classname="default" name="Property ASSERT in branch_unit at branch_unit.sv:38.13-38.63" time="0" type="ASSERT" location="branch_unit.sv:38.13-38.63" id="_witness_.check_assert_branch_unit_sv_38_17">
+</testcase>
+<testcase classname="default" name="Property ASSERT in branch_unit at branch_unit.sv:43.13-43.78" time="0" type="ASSERT" location="branch_unit.sv:43.13-43.78" id="_witness_.check_assert_branch_unit_sv_43_22">
+</testcase>
+<testcase classname="default" name="Property ASSERT in branch_unit at branch_unit.sv:45.13-45.79" time="0" type="ASSERT" location="branch_unit.sv:45.13-45.79" id="_witness_.check_assert_branch_unit_sv_45_26">
+</testcase>
+<testcase classname="default" name="Property ASSERT in branch_unit at branch_unit.sv:47.13-47.60" time="0" type="ASSERT" location="branch_unit.sv:47.13-47.60" id="_witness_.check_assert_branch_unit_sv_47_30">
+</testcase>
+<testcase classname="default" name="Property ASSERT in branch_unit at branch_unit.sv:49.13-49.61" time="0" type="ASSERT" location="branch_unit.sv:49.13-49.61" id="_witness_.check_assert_branch_unit_sv_49_34">
+</testcase>
+<testcase classname="default" name="Property ASSERT in branch_unit at branch_unit.sv:54.13-54.43" time="0" type="ASSERT" location="branch_unit.sv:54.13-54.43" id="_witness_.check_assert_branch_unit_sv_54_48">
+</testcase>
+<testcase classname="default" name="Property ASSERT in branch_unit at branch_unit.sv:57.9-57.59" time="0" type="ASSERT" location="branch_unit.sv:57.9-57.59" id="_witness_.check_assert_branch_unit_sv_57_50">
+</testcase>
+<testcase classname="default" name="Property ASSERT in branch_unit at branch_unit.sv:58.9-58.45" time="0" type="ASSERT" location="branch_unit.sv:58.9-58.45" id="_witness_.check_assert_branch_unit_sv_58_53">
+</testcase>
+<testcase classname="default" name="Property ASSERT in branch_unit at branch_unit.sv:63.13-63.42" time="0" type="ASSERT" location="branch_unit.sv:63.13-63.42" id="_witness_.check_assert_branch_unit_sv_63_57">
+</testcase>
+<testcase classname="default" name="Property COVER in branch_unit at branch_unit.sv:66.9-66.37" time="0" type="COVER" location="branch_unit.sv:66.9-66.37" id="_witness_.check_cover_branch_unit_sv_66_59">
+<skipped />
+</testcase>
+<testcase classname="default" name="Property COVER in branch_unit at branch_unit.sv:67.9-67.55" time="0" type="COVER" location="branch_unit.sv:67.9-67.55" id="_witness_.check_cover_branch_unit_sv_67_61">
+<skipped />
+</testcase>
+<testcase classname="default" name="Property COVER in branch_unit at branch_unit.sv:68.9-68.33" time="0" type="COVER" location="branch_unit.sv:68.9-68.33" id="_witness_.check_cover_branch_unit_sv_68_65">
+<skipped />
+</testcase>
+<testcase classname="default" name="Property COVER in branch_unit at branch_unit.sv:69.9-69.32" time="0" type="COVER" location="branch_unit.sv:69.9-69.32" id="_witness_.check_cover_branch_unit_sv_69_67">
+<skipped />
+</testcase>
+<system-out>SBY 12:58:33 [branch_unit] Removing directory '/Users/achen1228/RISCV-v2/verification/formal_verification/core_formal/branch_unit/branch_unit'.
+SBY 12:58:33 [branch_unit] Copy '/Users/achen1228/RISCV-v2/verification/formal_verification/core_formal/branch_unit/branch_unit.sv' to '/Users/achen1228/RISCV-v2/verification/formal_verification/core_formal/branch_unit/branch_unit/src/branch_unit.sv'.
+SBY 12:58:33 [branch_unit] engine_0: smtbmc boolector
+SBY 12:58:33 [branch_unit] base: starting process &quot;cd branch_unit/src; yosys -ql ../model/design.log ../model/design.ys&quot;
+SBY 12:58:33 [branch_unit] base: finished (returncode=0)
+SBY 12:58:33 [branch_unit] prep: starting process &quot;cd branch_unit/model; yosys -ql design_prep.log design_prep.ys&quot;
+SBY 12:58:33 [branch_unit] prep: finished (returncode=0)
+SBY 12:58:33 [branch_unit] smt2: starting process &quot;cd branch_unit/model; yosys -ql design_smt2.log design_smt2.ys&quot;
+SBY 12:58:33 [branch_unit] smt2: finished (returncode=0)
+SBY 12:58:33 [branch_unit] engine_0: starting process &quot;cd branch_unit; yosys-smtbmc -s boolector --presat --unroll --noprogress -t 1  --append 0 --dump-vcd engine_0/trace.vcd --dump-yw engine_0/trace.yw --dump-vlogtb engine_0/trace_tb.v --dump-smtc engine_0/trace.smtc model/design_smt2.smt2&quot;
+SBY 12:58:33 [branch_unit] engine_0: ##   0:00:00  Solver: boolector
+SBY 12:58:33 [branch_unit] engine_0: ##   0:00:00  Checking assumptions in step 0..
+SBY 12:58:33 [branch_unit] engine_0: ##   0:00:00  Checking assertions in step 0..
+SBY 12:58:33 [branch_unit] engine_0: ##   0:00:00  Status: passed
+SBY 12:58:33 [branch_unit] engine_0: finished (returncode=0)
+SBY 12:58:33 [branch_unit] engine_0: Status returned by engine: pass
+SBY 12:58:33 [branch_unit] summary: Elapsed clock time [H:MM:SS (secs)]: 0:00:00 (0)
+SBY 12:58:33 [branch_unit] summary: Elapsed process time [H:MM:SS (secs)]: 0:00:00 (0)
+SBY 12:58:33 [branch_unit] summary: engine_0 (smtbmc boolector) returned pass
+SBY 12:58:33 [branch_unit] summary: engine_0 did not produce any traces
+SBY 12:58:33 [branch_unit] DONE (PASS, rc=0)
+</system-out>
+<system-err>
+</system-err>
+</testsuite>
+</testsuites>

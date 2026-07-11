@@ -1,0 +1,21 @@
+SBY 12:58:33 [branch_unit] Removing directory '/Users/achen1228/RISCV-v2/verification/formal_verification/core_formal/branch_unit/branch_unit'.
+SBY 12:58:33 [branch_unit] Copy '/Users/achen1228/RISCV-v2/verification/formal_verification/core_formal/branch_unit/branch_unit.sv' to '/Users/achen1228/RISCV-v2/verification/formal_verification/core_formal/branch_unit/branch_unit/src/branch_unit.sv'.
+SBY 12:58:33 [branch_unit] engine_0: smtbmc boolector
+SBY 12:58:33 [branch_unit] base: starting process "cd branch_unit/src; yosys -ql ../model/design.log ../model/design.ys"
+SBY 12:58:33 [branch_unit] base: finished (returncode=0)
+SBY 12:58:33 [branch_unit] prep: starting process "cd branch_unit/model; yosys -ql design_prep.log design_prep.ys"
+SBY 12:58:33 [branch_unit] prep: finished (returncode=0)
+SBY 12:58:33 [branch_unit] smt2: starting process "cd branch_unit/model; yosys -ql design_smt2.log design_smt2.ys"
+SBY 12:58:33 [branch_unit] smt2: finished (returncode=0)
+SBY 12:58:33 [branch_unit] engine_0: starting process "cd branch_unit; yosys-smtbmc -s boolector --presat --unroll --noprogress -t 1  --append 0 --dump-vcd engine_0/trace.vcd --dump-yw engine_0/trace.yw --dump-vlogtb engine_0/trace_tb.v --dump-smtc engine_0/trace.smtc model/design_smt2.smt2"
+SBY 12:58:33 [branch_unit] engine_0: ##   0:00:00  Solver: boolector
+SBY 12:58:33 [branch_unit] engine_0: ##   0:00:00  Checking assumptions in step 0..
+SBY 12:58:33 [branch_unit] engine_0: ##   0:00:00  Checking assertions in step 0..
+SBY 12:58:33 [branch_unit] engine_0: ##   0:00:00  Status: passed
+SBY 12:58:33 [branch_unit] engine_0: finished (returncode=0)
+SBY 12:58:33 [branch_unit] engine_0: Status returned by engine: pass
+SBY 12:58:33 [branch_unit] summary: Elapsed clock time [H:MM:SS (secs)]: 0:00:00 (0)
+SBY 12:58:33 [branch_unit] summary: Elapsed process time [H:MM:SS (secs)]: 0:00:00 (0)
+SBY 12:58:33 [branch_unit] summary: engine_0 (smtbmc boolector) returned pass
+SBY 12:58:33 [branch_unit] summary: engine_0 did not produce any traces
+SBY 12:58:33 [branch_unit] DONE (PASS, rc=0)
