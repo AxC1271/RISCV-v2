@@ -66,7 +66,7 @@ This is the model followed for **RISCV-v2**, with a few differences from the tex
 previous iteration (v1) lacked multi-stage pipelining, hazard detection, any tangible way to
 interface with peripheral devices, and wasn't programmable — instructions had to be pre-loaded and
 synthesized as BRAM, making the design extremely unmodular and prone to data hazards with no
-pipelining.
+pipelining to speak of.
 
 This iteration adds a hazard detection unit to catch those hazards, and aims to increase
 performance through multi-stage pipelining, forwarding/branch units, and two separate L1 caches
@@ -90,7 +90,7 @@ that's downstream of the AXI-Lite work.
 
 For the I-cache and D-cache in this processor, I implemented a direct-mapped cache with a writeback
 policy for the I-cache, given its sequential access pattern. For the D-cache, I chose a 2-way
-set-associative architecture with an LRU policy to reduce cache misses.
+set-associative architecture with an LRU policy.
 
 ### Processor Architecture
 
@@ -120,8 +120,9 @@ Two complementary strategies, not one:
 
 - **[`verification/formal_verification/`](verification/formal_verification/README.md)** — formal
   proofs (SymbiYosys + BMC) for individual modules where the input space is large but the logic is
-  tractable enough to prove exhaustively — e.g. the ALU. Includes a documented case study of
-  distinguishing a real RTL bug from a Yosys tooling artifact.
+  tractable enough to prove exhaustively. Includes the ALU (`core_formal/alu`, complete, with a
+  documented case study of distinguishing a real RTL bug from a Yosys tooling artifact) and the
+  AXI-Lite master/slave wrappers (`core_formal/axi`, in progress alongside the interconnect itself).
 - **[`verification/simulation_testbenches/`](verification/simulation_testbenches/README.md)** —
   Icarus Verilog testbenches for full-CPU, multi-cycle, program-level behavior that formal doesn't
   cover well (running real RISC-V programs, checking pipeline behavior over hundreds of cycles).
@@ -136,7 +137,7 @@ results.
 - [x] 5-stage pipeline, hazard detection, forwarding
 - [x] Split L1 I/D caches (direct-mapped I, 2-way set-associative D)
 - [x] Bare-metal C toolchain (linker script, startup assembly, MMIO)
-- [x] Formal verification of individual modules (ALU complete; more modules in progress)
+- [x] Formal verification of individual modules (ALU complete; AXI-Lite wrappers in progress)
 - [ ] AXI-Lite interconnect (master/slave wrappers) — in progress
 - [ ] UART + SPI peripherals
 - [ ] UART bootloader
