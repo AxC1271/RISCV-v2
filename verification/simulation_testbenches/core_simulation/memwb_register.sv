@@ -1,34 +1,36 @@
 `timescale 1ns / 1ps
 
 module memwb_register (
-    input logic clk,
-    input logic rst_n,
-    input logic flush,
-    input logic [31:0] mem_alu_result,
-    input logic [31:0] mem_read_data,
-    input logic [4:0] mem_rd,
-    input logic mem_reg_write,
-    input logic mem_mem_to_reg,
+    input  logic clk,
+    input  logic rst_n,
+    input  logic stall,
+    input  logic [31:0] mem_alu_result,
+    input  logic [31:0] mem_rdata,
+    input  logic [4:0]  mem_rd,
+    input  logic        mem_regwrite,
+    input  logic        mem_memtoreg,
     output logic [31:0] wb_alu_result,
-    output logic [31:0] wb_read_data,
-    output logic [4:0] wb_rd,
-    output logic wb_reg_write,
-    output logic wb_mem_to_reg
+    output logic [31:0] wb_rdata,
+    output logic [4:0]  wb_rd,
+    output logic        wb_regwrite,
+    output logic        wb_memtoreg
 );
 
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n || flush) begin
+    always_ff @(posedge clk) begin
+        if (!rst_n) begin
             wb_alu_result <= 32'h0;
-            wb_read_data <= 32'h0;
-            wb_rd <= 5'h0;
-            wb_reg_write <= 1'b0;
-            wb_mem_to_reg <= 1'b0;
+            wb_rdata      <= 32'h0;
+            wb_rd         <= 5'h0;
+            wb_regwrite   <= 1'b0;
+            wb_memtoreg   <= 1'b0;
+        end else if (stall) begin
+            // do nothing
         end else begin
             wb_alu_result <= mem_alu_result;
-            wb_read_data <= mem_read_data;
-            wb_rd <= mem_rd;
-            wb_reg_write <= mem_reg_write;
-            wb_mem_to_reg <= mem_mem_to_reg;
+            wb_rdata      <= mem_rdata;
+            wb_rd         <= mem_rd;
+            wb_regwrite   <= mem_regwrite;
+            wb_memtoreg   <= mem_memtoreg;
         end
     end
 endmodule
