@@ -32,4 +32,6 @@ module alu (
         endcase
     end
 
+    // SystemVerilog assertions
+
 endmodule
