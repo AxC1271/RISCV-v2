@@ -264,6 +264,6 @@ Module branch_unit directly or indirectly contains formal properties -> setting 
 5. Executing RTLIL backend.
 Output filename: ../model/design.il
 
-End of script. Logfile hash: df4b09eedd, time: 0.02s, user: 0.02s, system: 0.02s, MEM: 19.44 MB peak
+End of script. Logfile hash: df4b09eedd, time: 0.03s, user: 0.02s, system: 0.03s, MEM: 19.41 MB peak
 Yosys 0.67+24 (git sha1 0e82bbefe-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin23.5-clang++ 18.1.8)
 Time spent: 19% 2x read_verilog (0 sec), 15% 6x opt_clean (0 sec), ...

@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+<testsuite timestamp="2026-07-11T16:59:11" hostname="Andrews-MacBook-Pro-12.local" package="control_unit" id="0" name="default" tests="79" errors="0" failures="0" time="0" skipped="9">
+<properties>
+<property name="os" value="Darwin"/>
+<property name="expect" value="PASS"/>
+<property name="status" value="PASS"/>
+</properties>
+<testcase classname="default" name="build execution" time="0">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:122.13-122.38" time="0" type="ASSERT" location="control_unit.sv:122.13-122.38" id="_witness_.check_assert_control_unit_sv_122_7">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:123.13-123.38" time="0" type="ASSERT" location="control_unit.sv:123.13-123.38" id="_witness_.check_assert_control_unit_sv_123_9">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:124.13-124.38" time="0" type="ASSERT" location="control_unit.sv:124.13-124.38" id="_witness_.check_assert_control_unit_sv_124_11">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:125.13-125.38" time="0" type="ASSERT" location="control_unit.sv:125.13-125.38" id="_witness_.check_assert_control_unit_sv_125_13">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:126.13-126.38" time="0" type="ASSERT" location="control_unit.sv:126.13-126.38" id="_witness_.check_assert_control_unit_sv_126_15">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:127.13-127.38" time="0" type="ASSERT" location="control_unit.sv:127.13-127.38" id="_witness_.check_assert_control_unit_sv_127_17">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:129.26-129.86" time="0" type="ASSERT" location="control_unit.sv:129.26-129.86" id="_witness_.check_assert_control_unit_sv_129_19">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:130.26-130.56" time="0" type="ASSERT" location="control_unit.sv:130.26-130.56" id="_witness_.check_assert_control_unit_sv_130_22">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:131.26-131.56" time="0" type="ASSERT" location="control_unit.sv:131.26-131.56" id="_witness_.check_assert_control_unit_sv_131_24">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:132.26-132.57" time="0" type="ASSERT" location="control_unit.sv:132.26-132.57" id="_witness_.check_assert_control_unit_sv_132_26">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:133.26-133.56" time="0" type="ASSERT" location="control_unit.sv:133.26-133.56" id="_witness_.check_assert_control_unit_sv_133_28">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:134.26-134.86" time="0" type="ASSERT" location="control_unit.sv:134.26-134.86" id="_witness_.check_assert_control_unit_sv_134_30">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:135.26-135.55" time="0" type="ASSERT" location="control_unit.sv:135.26-135.55" id="_witness_.check_assert_control_unit_sv_135_33">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:136.26-136.56" time="0" type="ASSERT" location="control_unit.sv:136.26-136.56" id="_witness_.check_assert_control_unit_sv_136_35">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:142.13-142.38" time="0" type="ASSERT" location="control_unit.sv:142.13-142.38" id="_witness_.check_assert_control_unit_sv_142_38">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:143.13-143.38" time="0" type="ASSERT" location="control_unit.sv:143.13-143.38" id="_witness_.check_assert_control_unit_sv_143_40">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:144.13-144.38" time="0" type="ASSERT" location="control_unit.sv:144.13-144.38" id="_witness_.check_assert_control_unit_sv_144_42">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:145.13-145.38" time="0" type="ASSERT" location="control_unit.sv:145.13-145.38" id="_witness_.check_assert_control_unit_sv_145_44">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:146.13-146.38" time="0" type="ASSERT" location="control_unit.sv:146.13-146.38" id="_witness_.check_assert_control_unit_sv_146_46">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:147.13-147.38" time="0" type="ASSERT" location="control_unit.sv:147.13-147.38" id="_witness_.check_assert_control_unit_sv_147_48">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:149.26-149.56" time="0" type="ASSERT" location="control_unit.sv:149.26-149.56" id="_witness_.check_assert_control_unit_sv_149_50">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:150.26-150.56" time="0" type="ASSERT" location="control_unit.sv:150.26-150.56" id="_witness_.check_assert_control_unit_sv_150_52">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:151.26-151.56" time="0" type="ASSERT" location="control_unit.sv:151.26-151.56" id="_witness_.check_assert_control_unit_sv_151_54">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:152.26-152.57" time="0" type="ASSERT" location="control_unit.sv:152.26-152.57" id="_witness_.check_assert_control_unit_sv_152_56">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:153.26-153.56" time="0" type="ASSERT" location="control_unit.sv:153.26-153.56" id="_witness_.check_assert_control_unit_sv_153_58">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:154.26-154.86" time="0" type="ASSERT" location="control_unit.sv:154.26-154.86" id="_witness_.check_assert_control_unit_sv_154_60">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:155.26-155.55" time="0" type="ASSERT" location="control_unit.sv:155.26-155.55" id="_witness_.check_assert_control_unit_sv_155_63">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:156.26-156.56" time="0" type="ASSERT" location="control_unit.sv:156.26-156.56" id="_witness_.check_assert_control_unit_sv_156_65">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:162.13-162.40" time="0" type="ASSERT" location="control_unit.sv:162.13-162.40" id="_witness_.check_assert_control_unit_sv_162_68">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:163.13-163.40" time="0" type="ASSERT" location="control_unit.sv:163.13-163.40" id="_witness_.check_assert_control_unit_sv_163_70">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:164.13-164.40" time="0" type="ASSERT" location="control_unit.sv:164.13-164.40" id="_witness_.check_assert_control_unit_sv_164_72">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:165.13-165.40" time="0" type="ASSERT" location="control_unit.sv:165.13-165.40" id="_witness_.check_assert_control_unit_sv_165_74">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:166.13-166.40" time="0" type="ASSERT" location="control_unit.sv:166.13-166.40" id="_witness_.check_assert_control_unit_sv_166_76">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:167.13-167.40" time="0" type="ASSERT" location="control_unit.sv:167.13-167.40" id="_witness_.check_assert_control_unit_sv_167_78">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:168.13-168.40" time="0" type="ASSERT" location="control_unit.sv:168.13-168.40" id="_witness_.check_assert_control_unit_sv_168_80">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:169.13-169.43" time="0" type="ASSERT" location="control_unit.sv:169.13-169.43" id="_witness_.check_assert_control_unit_sv_169_82">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:174.13-174.40" time="0" type="ASSERT" location="control_unit.sv:174.13-174.40" id="_witness_.check_assert_control_unit_sv_174_85">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:175.13-175.40" time="0" type="ASSERT" location="control_unit.sv:175.13-175.40" id="_witness_.check_assert_control_unit_sv_175_87">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:176.13-176.40" time="0" type="ASSERT" location="control_unit.sv:176.13-176.40" id="_witness_.check_assert_control_unit_sv_176_89">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:177.13-177.40" time="0" type="ASSERT" location="control_unit.sv:177.13-177.40" id="_witness_.check_assert_control_unit_sv_177_91">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:178.13-178.40" time="0" type="ASSERT" location="control_unit.sv:178.13-178.40" id="_witness_.check_assert_control_unit_sv_178_93">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:179.13-179.40" time="0" type="ASSERT" location="control_unit.sv:179.13-179.40" id="_witness_.check_assert_control_unit_sv_179_95">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:180.13-180.43" time="0" type="ASSERT" location="control_unit.sv:180.13-180.43" id="_witness_.check_assert_control_unit_sv_180_97">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:185.13-185.38" time="0" type="ASSERT" location="control_unit.sv:185.13-185.38" id="_witness_.check_assert_control_unit_sv_185_100">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:186.13-186.38" time="0" type="ASSERT" location="control_unit.sv:186.13-186.38" id="_witness_.check_assert_control_unit_sv_186_102">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:187.13-187.38" time="0" type="ASSERT" location="control_unit.sv:187.13-187.38" id="_witness_.check_assert_control_unit_sv_187_104">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:188.13-188.38" time="0" type="ASSERT" location="control_unit.sv:188.13-188.38" id="_witness_.check_assert_control_unit_sv_188_106">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:189.13-189.38" time="0" type="ASSERT" location="control_unit.sv:189.13-189.38" id="_witness_.check_assert_control_unit_sv_189_108">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:194.13-194.38" time="0" type="ASSERT" location="control_unit.sv:194.13-194.38" id="_witness_.check_assert_control_unit_sv_194_111">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:195.13-195.38" time="0" type="ASSERT" location="control_unit.sv:195.13-195.38" id="_witness_.check_assert_control_unit_sv_195_113">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:196.13-196.38" time="0" type="ASSERT" location="control_unit.sv:196.13-196.38" id="_witness_.check_assert_control_unit_sv_196_115">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:197.13-197.38" time="0" type="ASSERT" location="control_unit.sv:197.13-197.38" id="_witness_.check_assert_control_unit_sv_197_117">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:198.13-198.38" time="0" type="ASSERT" location="control_unit.sv:198.13-198.38" id="_witness_.check_assert_control_unit_sv_198_119">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:199.13-199.38" time="0" type="ASSERT" location="control_unit.sv:199.13-199.38" id="_witness_.check_assert_control_unit_sv_199_121">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:204.13-204.38" time="0" type="ASSERT" location="control_unit.sv:204.13-204.38" id="_witness_.check_assert_control_unit_sv_204_124">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:205.13-205.38" time="0" type="ASSERT" location="control_unit.sv:205.13-205.38" id="_witness_.check_assert_control_unit_sv_205_126">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:206.13-206.38" time="0" type="ASSERT" location="control_unit.sv:206.13-206.38" id="_witness_.check_assert_control_unit_sv_206_128">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:207.13-207.38" time="0" type="ASSERT" location="control_unit.sv:207.13-207.38" id="_witness_.check_assert_control_unit_sv_207_130">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:208.13-208.38" time="0" type="ASSERT" location="control_unit.sv:208.13-208.38" id="_witness_.check_assert_control_unit_sv_208_132">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:209.13-209.38" time="0" type="ASSERT" location="control_unit.sv:209.13-209.38" id="_witness_.check_assert_control_unit_sv_209_134">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:217.13-217.43" time="0" type="ASSERT" location="control_unit.sv:217.13-217.43" id="_witness_.check_assert_control_unit_sv_217_149">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:218.13-218.40" time="0" type="ASSERT" location="control_unit.sv:218.13-218.40" id="_witness_.check_assert_control_unit_sv_218_151">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:219.13-219.40" time="0" type="ASSERT" location="control_unit.sv:219.13-219.40" id="_witness_.check_assert_control_unit_sv_219_153">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:220.13-220.40" time="0" type="ASSERT" location="control_unit.sv:220.13-220.40" id="_witness_.check_assert_control_unit_sv_220_155">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:221.13-221.40" time="0" type="ASSERT" location="control_unit.sv:221.13-221.40" id="_witness_.check_assert_control_unit_sv_221_157">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:222.13-222.40" time="0" type="ASSERT" location="control_unit.sv:222.13-222.40" id="_witness_.check_assert_control_unit_sv_222_159">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:223.13-223.40" time="0" type="ASSERT" location="control_unit.sv:223.13-223.40" id="_witness_.check_assert_control_unit_sv_223_161">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:224.13-224.40" time="0" type="ASSERT" location="control_unit.sv:224.13-224.40" id="_witness_.check_assert_control_unit_sv_224_163">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:228.9-228.40" time="0" type="ASSERT" location="control_unit.sv:228.9-228.40" id="_witness_.check_assert_control_unit_sv_228_165">
+</testcase>
+<testcase classname="default" name="Property ASSERT in control_unit at control_unit.sv:229.9-229.35" time="0" type="ASSERT" location="control_unit.sv:229.9-229.35" id="_witness_.check_assert_control_unit_sv_229_168">
+</testcase>
+<testcase classname="default" name="Property COVER in control_unit at control_unit.sv:233.9-233.98" time="0" type="COVER" location="control_unit.sv:233.9-233.98" id="_witness_.check_cover_control_unit_sv_233_171">
+<skipped />
+</testcase>
+<testcase classname="default" name="Property COVER in control_unit at control_unit.sv:234.9-234.98" time="0" type="COVER" location="control_unit.sv:234.9-234.98" id="_witness_.check_cover_control_unit_sv_234_176">
+<skipped />
+</testcase>
+<testcase classname="default" name="Property COVER in control_unit at control_unit.sv:235.9-235.98" time="0" type="COVER" location="control_unit.sv:235.9-235.98" id="_witness_.check_cover_control_unit_sv_235_181">
+<skipped />
+</testcase>
+<testcase classname="default" name="Property COVER in control_unit at control_unit.sv:236.9-236.44" time="0" type="COVER" location="control_unit.sv:236.9-236.44" id="_witness_.check_cover_control_unit_sv_236_186">
+<skipped />
+</testcase>
+<testcase classname="default" name="Property COVER in control_unit at control_unit.sv:237.9-237.45" time="0" type="COVER" location="control_unit.sv:237.9-237.45" id="_witness_.check_cover_control_unit_sv_237_188">
+<skipped />
+</testcase>
+<testcase classname="default" name="Property COVER in control_unit at control_unit.sv:238.9-238.46" time="0" type="COVER" location="control_unit.sv:238.9-238.46" id="_witness_.check_cover_control_unit_sv_238_190">
+<skipped />
+</testcase>
+<testcase classname="default" name="Property COVER in control_unit at control_unit.sv:239.9-239.43" time="0" type="COVER" location="control_unit.sv:239.9-239.43" id="_witness_.check_cover_control_unit_sv_239_192">
+<skipped />
+</testcase>
+<testcase classname="default" name="Property COVER in control_unit at control_unit.sv:240.9-240.44" time="0" type="COVER" location="control_unit.sv:240.9-240.44" id="_witness_.check_cover_control_unit_sv_240_194">
+<skipped />
+</testcase>
+<testcase classname="default" name="Property COVER in control_unit at control_unit.sv:241.9-244.44" time="0" type="COVER" location="control_unit.sv:241.9-244.44" id="_witness_.check_cover_control_unit_sv_241_196">
+<skipped />
+</testcase>
+<system-out>SBY 16:59:11 [control_unit] Removing directory '/Users/achen1228/RISCV-v2/verification/formal_verification/core_formal/control_unit_report/control_unit'.
+SBY 16:59:11 [control_unit] Copy '/Users/achen1228/RISCV-v2/verification/formal_verification/core_formal/control_unit_report/control_unit.sv' to '/Users/achen1228/RISCV-v2/verification/formal_verification/core_formal/control_unit_report/control_unit/src/control_unit.sv'.
+SBY 16:59:11 [control_unit] engine_0: smtbmc boolector
+SBY 16:59:11 [control_unit] base: starting process &quot;cd control_unit/src; yosys -ql ../model/design.log ../model/design.ys&quot;
+SBY 16:59:11 [control_unit] base: finished (returncode=0)
+SBY 16:59:11 [control_unit] prep: starting process &quot;cd control_unit/model; yosys -ql design_prep.log design_prep.ys&quot;
+SBY 16:59:11 [control_unit] prep: finished (returncode=0)
+SBY 16:59:11 [control_unit] smt2: starting process &quot;cd control_unit/model; yosys -ql design_smt2.log design_smt2.ys&quot;
+SBY 16:59:11 [control_unit] smt2: finished (returncode=0)
+SBY 16:59:11 [control_unit] engine_0: starting process &quot;cd control_unit; yosys-smtbmc -s boolector --presat --unroll --noprogress -t 1  --append 0 --dump-vcd engine_0/trace.vcd --dump-yw engine_0/trace.yw --dump-vlogtb engine_0/trace_tb.v --dump-smtc engine_0/trace.smtc model/design_smt2.smt2&quot;
+SBY 16:59:11 [control_unit] engine_0: ##   0:00:00  Solver: boolector
+SBY 16:59:11 [control_unit] engine_0: ##   0:00:00  Checking assumptions in step 0..
+SBY 16:59:11 [control_unit] engine_0: ##   0:00:00  Checking assertions in step 0..
+SBY 16:59:11 [control_unit] engine_0: ##   0:00:00  Status: passed
+SBY 16:59:11 [control_unit] engine_0: finished (returncode=0)
+SBY 16:59:11 [control_unit] engine_0: Status returned by engine: pass
+SBY 16:59:11 [control_unit] summary: Elapsed clock time [H:MM:SS (secs)]: 0:00:00 (0)
+SBY 16:59:11 [control_unit] summary: Elapsed process time [H:MM:SS (secs)]: 0:00:00 (0)
+SBY 16:59:11 [control_unit] summary: engine_0 (smtbmc boolector) returned pass
+SBY 16:59:11 [control_unit] summary: engine_0 did not produce any traces
+SBY 16:59:11 [control_unit] DONE (PASS, rc=0)
+</system-out>
+<system-err>
+</system-err>
+</testsuite>
+</testsuites>

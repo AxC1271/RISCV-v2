@@ -1,5 +1,3 @@
-`timescale 1ns / 1ps
-
 module register_file (
     input logic clk,
     input logic rst_n,
@@ -15,7 +13,6 @@ module register_file (
 );
 
     logic[31:0] mem [0:31];
-    localparam int ZERO_REG = 0;
 
     // make reads combinational
     assign rd_data1 = mem[rd_addr1];
@@ -28,7 +25,7 @@ module register_file (
                 mem[i] <= 32'h0;
             end
         end else begin
-            if (wr_en && wr_addr != ZERO_REG) begin
+            if (wr_en && wr_addr != 5'b00000) begin
                 mem[wr_addr] <= wr_data;
             end
         end

@@ -63,6 +63,6 @@ Finding unused cells or wires in module \branch_unit..
 13. Executing RTLIL backend.
 Output filename: ../model/design_prep.il
 
-End of script. Logfile hash: 3e397e4209, time: 0.01s, user: 0.01s, system: 0.01s, MEM: 17.66 MB peak
+End of script. Logfile hash: 3e397e4209, time: 0.01s, user: 0.01s, system: 0.01s, MEM: 17.48 MB peak
 Yosys 0.67+24 (git sha1 0e82bbefe-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin23.5-clang++ 18.1.8)
-Time spent: 23% 4x opt_clean (0 sec), 12% 2x write_rtlil (0 sec), ...
+Time spent: 23% 4x opt_clean (0 sec), 10% 2x read_rtlil (0 sec), ...
