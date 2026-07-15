@@ -8,12 +8,13 @@ module immediate_generator (
     localparam OPCODE_I_REG  = 7'b0010011;
     localparam OPCODE_S      = 7'b0100011;
     localparam OPCODE_B      = 7'b1100011;
-    localparam OPCODE_U      = 7'b0110111;
+    localparam OPCODE_LUI    = 7'b0110111;
+    localparam OPCODE_AUIPC  = 7'b0010111;
     localparam OPCODE_J      = 7'b1101111;
     localparam OPCODE_JALR   = 7'b1100111;
 
     always_comb begin
-        case(instr[6:0])
+        case (instr[6:0])
             OPCODE_R: begin
                 imm = 32'b0;
             end
@@ -34,7 +35,11 @@ module immediate_generator (
                 imm = {{20{instr[31]}}, instr[7], instr[30:25], instr[11:8], 1'b0};
             end
 
-            OPCODE_U: begin
+            OPCODE_LUI: begin
+                imm = {instr[31:12], 12'b0};
+            end
+
+            OPCODE_AUIPC: begin
                 imm = {instr[31:12], 12'b0};
             end
 

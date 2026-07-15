@@ -20,326 +20,104 @@ Supported instructions:
     I-type: jalr
 """
 
-# -------------------------------------------------------
-# Encoding helpers
-# -------------------------------------------------------
+##!/usr/bin/env python3
+# tiny rv32i assembler for testbench program generation
+# usage: encode(mnemonic, ...) -> 32-bit int
 
-def to_unsigned(val, bits):
-    return val & ((1 << bits) - 1)
+def r(op, f3, f7, rd, rs1, rs2):
+    return (f7 << 25) | (rs2 << 20) | (rs1 << 15) | (f3 << 12) | (rd << 7) | op
 
-def encode_r(funct7, rs2, rs1, funct3, rd, opcode):
-    return (to_unsigned(funct7, 7) << 25 |
-            to_unsigned(rs2,    5) << 20 |
-            to_unsigned(rs1,    5) << 15 |
-            to_unsigned(funct3, 3) << 12 |
-            to_unsigned(rd,     5) <<  7 |
-            to_unsigned(opcode, 7))
+def i(op, f3, rd, rs1, imm):
+    imm &= 0xFFF
+    return (imm << 20) | (rs1 << 15) | (f3 << 12) | (rd << 7) | op
 
-def encode_i(imm, rs1, funct3, rd, opcode):
-    return (to_unsigned(imm,   12) << 20 |
-            to_unsigned(rs1,    5) << 15 |
-            to_unsigned(funct3, 3) << 12 |
-            to_unsigned(rd,     5) <<  7 |
-            to_unsigned(opcode, 7))
+def s(op, f3, rs1, rs2, imm):
+    imm &= 0xFFF
+    return ((imm >> 5) << 25) | (rs2 << 20) | (rs1 << 15) | (f3 << 12) | ((imm & 0x1F) << 7) | op
 
-def encode_s(imm, rs2, rs1, funct3, opcode):
-    imm = to_unsigned(imm, 12)
-    return ((imm >> 5) & 0x7F) << 25 | \
-           to_unsigned(rs2,    5) << 20 | \
-           to_unsigned(rs1,    5) << 15 | \
-           to_unsigned(funct3, 3) << 12 | \
-           (imm & 0x1F)           <<  7 | \
-           to_unsigned(opcode, 7)
+def b(f3, rs1, rs2, imm):
+    imm &= 0x1FFF
+    return (((imm >> 12) & 1) << 31) | (((imm >> 5) & 0x3F) << 25) | (rs2 << 20) | \
+           (rs1 << 15) | (f3 << 12) | (((imm >> 1) & 0xF) << 8) | (((imm >> 11) & 1) << 7) | 0b1100011
 
-def encode_b(imm, rs2, rs1, funct3, opcode):
-    imm = to_unsigned(imm, 13)
-    b12   = (imm >> 12) & 1
-    b11   = (imm >> 11) & 1
-    b10_5 = (imm >>  5) & 0x3F
-    b4_1  = (imm >>  1) & 0xF
-    return (b12   << 31 |
-            b10_5 << 25 |
-            to_unsigned(rs2,    5) << 20 |
-            to_unsigned(rs1,    5) << 15 |
-            to_unsigned(funct3, 3) << 12 |
-            b4_1  <<  8 |
-            b11   <<  7 |
-            to_unsigned(opcode, 7))
+def u(op, rd, imm20):
+    return ((imm20 & 0xFFFFF) << 12) | (rd << 7) | op
 
-def encode_u(imm, rd, opcode):
-    return (to_unsigned(imm, 20) << 12 |
-            to_unsigned(rd,   5) <<  7 |
-            to_unsigned(opcode, 7))
+def j(rd, imm):
+    imm &= 0x1FFFFF
+    return (((imm >> 20) & 1) << 31) | (((imm >> 1) & 0x3FF) << 21) | (((imm >> 11) & 1) << 20) | \
+           (((imm >> 12) & 0xFF) << 12) | (rd << 7) | 0b1101111
 
-def encode_j(imm, rd, opcode):
-    imm = to_unsigned(imm, 21)
-    b20    = (imm >> 20) & 1
-    b10_1  = (imm >>  1) & 0x3FF
-    b11    = (imm >> 11) & 1
-    b19_12 = (imm >> 12) & 0xFF
-    return (b20    << 31 |
-            b19_12 << 12 |
-            b11    << 20 |
-            b10_1  << 21 |
-            to_unsigned(rd, 5) << 7 |
-            to_unsigned(opcode, 7))
+E = {
+    'addi':  lambda rd, rs1, imm: i(0b0010011, 0b000, rd, rs1, imm),
+    'slli':  lambda rd, rs1, sh:  i(0b0010011, 0b001, rd, rs1, sh),
+    'srai':  lambda rd, rs1, sh:  i(0b0010011, 0b101, rd, rs1, sh | 0x400),
+    'add':   lambda rd, rs1, rs2: r(0b0110011, 0b000, 0b0000000, rd, rs1, rs2),
+    'sub':   lambda rd, rs1, rs2: r(0b0110011, 0b000, 0b0100000, rd, rs1, rs2),
+    'slt':   lambda rd, rs1, rs2: r(0b0110011, 0b010, 0b0000000, rd, rs1, rs2),
+    'sltu':  lambda rd, rs1, rs2: r(0b0110011, 0b011, 0b0000000, rd, rs1, rs2),
+    'lw':    lambda rd, rs1, imm: i(0b0000011, 0b010, rd, rs1, imm),
+    'lh':    lambda rd, rs1, imm: i(0b0000011, 0b001, rd, rs1, imm),
+    'lhu':   lambda rd, rs1, imm: i(0b0000011, 0b101, rd, rs1, imm),
+    'lb':    lambda rd, rs1, imm: i(0b0000011, 0b000, rd, rs1, imm),
+    'lbu':   lambda rd, rs1, imm: i(0b0000011, 0b100, rd, rs1, imm),
+    'sw':    lambda rs1, rs2, imm: s(0b0100011, 0b010, rs1, rs2, imm),
+    'sh':    lambda rs1, rs2, imm: s(0b0100011, 0b001, rs1, rs2, imm),
+    'sb':    lambda rs1, rs2, imm: s(0b0100011, 0b000, rs1, rs2, imm),
+    'beq':   lambda rs1, rs2, imm: b(0b000, rs1, rs2, imm),
+    'bne':   lambda rs1, rs2, imm: b(0b001, rs1, rs2, imm),
+    'blt':   lambda rs1, rs2, imm: b(0b100, rs1, rs2, imm),
+    'lui':   lambda rd, imm20: u(0b0110111, rd, imm20),
+    'auipc': lambda rd, imm20: u(0b0010111, rd, imm20),
+    'jal':   lambda rd, imm: j(rd, imm),
+    'jalr':  lambda rd, rs1, imm: i(0b1100111, 0b000, rd, rs1, imm),
+    'ebreak': lambda: 0x00100073,
+    'nop':   lambda: 0x00000013,
+}
 
-# -------------------------------------------------------
-# Register name -> number
-# -------------------------------------------------------
-REGS = {f'x{i}': i for i in range(32)}
-REGS.update({
-    'zero':0, 'ra':1, 'sp':2, 'gp':3, 'tp':4,
-    't0':5, 't1':6, 't2':7,
-    's0':8, 'fp':8, 's1':9,
-    'a0':10, 'a1':11, 'a2':12, 'a3':13,
-    'a4':14, 'a5':15, 'a6':16, 'a7':17,
-    's2':18, 's3':19, 's4':20, 's5':21,
-    's6':22, 's7':23, 's8':24, 's9':25,
-    's10':26, 's11':27,
-    't3':28, 't4':29, 't5':30, 't6':31,
-})
+BASE = 0x00010000
 
-def reg(name):
-    name = name.strip().lower()
-    if name not in REGS:
-        raise ValueError(f"Unknown register: {name}")
-    return REGS[name]
+program = [
+    # (addr, mnemonic, args, comment)
+    (0x00, 'addi', (1, 0, 100),      'x1  = 100 (base ptr)'),
+    (0x04, 'addi', (2, 0, 42),       'x2  = 42'),
+    (0x08, 'add',  (3, 1, 2),        'x3  = 142  EX->EX fwd'),
+    (0x0C, 'sw',   (1, 2, 0),        'mem[100] = 42'),
+    (0x10, 'lw',   (4, 1, 0),        'x4  = 42'),
+    (0x14, 'add',  (5, 4, 4),        'x5  = 84   load-use stall'),
+    (0x18, 'lui',  (6, 0x12345),     'x6  = 0x12345000'),
+    (0x1C, 'auipc',(7, 0),           'x7  = BASE+0x1C'),
+    (0x20, 'jal',  (8, 12),          'x8  = BASE+0x24, jump to +0x2C'),
+    (0x24, 'addi', (9, 0, 99),       'SQUASHED'),
+    (0x28, 'addi', (10, 0, 98),      'SQUASHED'),
+    (0x2C, 'addi', (11, 0, 1),       'x11 = 1'),
+    (0x30, 'auipc',(12, 0),          'x12 = BASE+0x30'),
+    (0x34, 'jalr', (13, 12, 0x40),   'x13 = BASE+0x38, jump to BASE+0x70'),
+    (0x38, 'addi', (14, 0, 97),      'SQUASHED'),
+    (0x3C, 'addi', (15, 0, 96),      'SQUASHED'),
+    (0x70, 'addi', (14, 0, 5),       'x14 = 5'),
+    (0x74, 'beq',  (14, 14, 12),     'taken, jump to +0x80'),
+    (0x78, 'addi', (15, 0, 95),      'SQUASHED'),
+    (0x7C, 'addi', (16, 0, 94),      'SQUASHED'),
+    (0x80, 'bne',  (14, 14, 8),      'not taken'),
+    (0x84, 'addi', (16, 0, 7),       'x16 = 7'),
+    (0x88, 'addi', (17, 0, -1),      'x17 = 0xFFFFFFFF'),
+    (0x8C, 'sb',   (1, 17, 4),       'mem[104].b0 = FF'),
+    (0x90, 'sb',   (1, 14, 5),       'mem[104].b1 = 05 -> 0x000005FF'),
+    (0x94, 'lbu',  (18, 1, 4),       'x18 = 0x000000FF'),
+    (0x98, 'lb',   (19, 1, 4),       'x19 = 0xFFFFFFFF'),
+    (0x9C, 'lh',   (20, 1, 4),       'x20 = 0x000005FF'),
+    (0xA0, 'sh',   (1, 17, 6),       'mem[104] = 0xFFFF05FF'),
+    (0xA4, 'lw',   (21, 1, 4),       'x21 = 0xFFFF05FF'),
+    (0xA8, 'lhu',  (22, 1, 6),       'x22 = 0x0000FFFF'),
+    (0xAC, 'srai', (23, 17, 4),      'x23 = 0xFFFFFFFF'),
+    (0xB0, 'sltu', (24, 0, 17),      'x24 = 1'),
+    (0xB4, 'slt',  (25, 17, 0),      'x25 = 1'),
+    (0xB8, 'ebreak', (),             'halt'),
+]
 
-# -------------------------------------------------------
-# Instruction encoders
-# -------------------------------------------------------
-
-def addi(rd, rs1, imm):  return encode_i(imm, reg(rs1), 0b000, reg(rd), 0b0010011)
-def add (rd, rs1, rs2):  return encode_r(0b0000000, reg(rs2), reg(rs1), 0b000, reg(rd), 0b0110011)
-def sub (rd, rs1, rs2):  return encode_r(0b0100000, reg(rs2), reg(rs1), 0b000, reg(rd), 0b0110011)
-def and_(rd, rs1, rs2):  return encode_r(0b0000000, reg(rs2), reg(rs1), 0b111, reg(rd), 0b0110011)
-def or_ (rd, rs1, rs2):  return encode_r(0b0000000, reg(rs2), reg(rs1), 0b110, reg(rd), 0b0110011)
-def xor (rd, rs1, rs2):  return encode_r(0b0000000, reg(rs2), reg(rs1), 0b100, reg(rd), 0b0110011)
-def sll (rd, rs1, rs2):  return encode_r(0b0000000, reg(rs2), reg(rs1), 0b001, reg(rd), 0b0110011)
-def srl (rd, rs1, rs2):  return encode_r(0b0000000, reg(rs2), reg(rs1), 0b101, reg(rd), 0b0110011)
-def sra (rd, rs1, rs2):  return encode_r(0b0100000, reg(rs2), reg(rs1), 0b101, reg(rd), 0b0110011)
-def slt (rd, rs1, rs2):  return encode_r(0b0000000, reg(rs2), reg(rs1), 0b010, reg(rd), 0b0110011)
-def sltu(rd, rs1, rs2):  return encode_r(0b0000000, reg(rs2), reg(rs1), 0b011, reg(rd), 0b0110011)
-
-def andi (rd, rs1, imm): return encode_i(imm, reg(rs1), 0b111, reg(rd), 0b0010011)
-def ori  (rd, rs1, imm): return encode_i(imm, reg(rs1), 0b110, reg(rd), 0b0010011)
-def xori (rd, rs1, imm): return encode_i(imm, reg(rs1), 0b100, reg(rd), 0b0010011)
-def slti (rd, rs1, imm): return encode_i(imm, reg(rs1), 0b010, reg(rd), 0b0010011)
-def sltiu(rd, rs1, imm): return encode_i(imm, reg(rs1), 0b011, reg(rd), 0b0010011)
-def slli (rd, rs1, shamt): return encode_i((0b0000000 << 5) | (shamt & 0x1F), reg(rs1), 0b001, reg(rd), 0b0010011)
-def srli (rd, rs1, shamt): return encode_i((0b0000000 << 5) | (shamt & 0x1F), reg(rs1), 0b101, reg(rd), 0b0010011)
-def srai (rd, rs1, shamt): return encode_i((0b0100000 << 5) | (shamt & 0x1F), reg(rs1), 0b101, reg(rd), 0b0010011)
-
-def lw (rd, rs1, imm): return encode_i(imm, reg(rs1), 0b010, reg(rd), 0b0000011)
-def lh (rd, rs1, imm): return encode_i(imm, reg(rs1), 0b001, reg(rd), 0b0000011)
-def lb (rd, rs1, imm): return encode_i(imm, reg(rs1), 0b000, reg(rd), 0b0000011)
-def lhu(rd, rs1, imm): return encode_i(imm, reg(rs1), 0b101, reg(rd), 0b0000011)
-def lbu(rd, rs1, imm): return encode_i(imm, reg(rs1), 0b100, reg(rd), 0b0000011)
-
-def sw(rs2, rs1, imm): return encode_s(imm, reg(rs2), reg(rs1), 0b010, 0b0100011)
-def sh(rs2, rs1, imm): return encode_s(imm, reg(rs2), reg(rs1), 0b001, 0b0100011)
-def sb(rs2, rs1, imm): return encode_s(imm, reg(rs2), reg(rs1), 0b000, 0b0100011)
-
-def beq (rs1, rs2, imm): return encode_b(imm, reg(rs2), reg(rs1), 0b000, 0b1100011)
-def bne (rs1, rs2, imm): return encode_b(imm, reg(rs2), reg(rs1), 0b001, 0b1100011)
-def blt (rs1, rs2, imm): return encode_b(imm, reg(rs2), reg(rs1), 0b100, 0b1100011)
-def bge (rs1, rs2, imm): return encode_b(imm, reg(rs2), reg(rs1), 0b101, 0b1100011)
-def bltu(rs1, rs2, imm): return encode_b(imm, reg(rs2), reg(rs1), 0b110, 0b1100011)
-def bgeu(rs1, rs2, imm): return encode_b(imm, reg(rs2), reg(rs1), 0b111, 0b1100011)
-
-def lui  (rd, imm):       return encode_u(imm, reg(rd), 0b0110111)
-def auipc(rd, imm):       return encode_u(imm, reg(rd), 0b0010111)
-def jal  (rd, imm):       return encode_j(imm, reg(rd), 0b1101111)
-def jalr (rd, rs1, imm):  return encode_i(imm, reg(rs1), 0b000, reg(rd), 0b1100111)
-
-NOP = addi('x0', 'x0', 0)
-
-# -------------------------------------------------------
-# Verify expected values at script load time
-# -------------------------------------------------------
-def verify():
-    assert (93 & 100) == 68,  "and x8: 93 & 100 = 68, not 64"
-    assert (10 + 5)   == 15,  "addi x2"
-    assert (10 + 15)  == 25,  "add x3"
-    assert (25 << 2)  == 100, "slli x4"
-    assert (100 - 10) == 90,  "sub x5"
-    assert (90 ^ 15)  == 85,  "xor x6"
-    assert (85 | 25)  == 93,  "or x7"
-    assert (57)       == 57,  "sub x7 load-use"
-
-verify()
-
-# -------------------------------------------------------
-# Print helper
-# -------------------------------------------------------
-def print_program(name, instructions, base_addr=0):
-    print(f"\n// {'='*60}")
-    print(f"// {name}")
-    print(f"// {'='*60}")
-    for i, (enc, comment) in enumerate(instructions):
-        byte_addr = base_addr + i * 4
-        print(f"imem['h{byte_addr:03X} >> 2] = 32'h{enc:08X}; // {comment}")
-
-# -------------------------------------------------------
-# Program 1: RAW Hazard / Forwarding Test
-# -------------------------------------------------------
-def program_raw_hazards():
-    """
-    All instructions read registers written by the immediately
-    preceding instruction. Zero stalls should occur with correct
-    EX->EX and MEM->EX forwarding.
-
-    Verified expected values:
-      x1=10  x2=15  x3=25  x4=100  x5=90  x6=85  x7=93  x8=68
-      (note: 93 & 100 = 68, not 64 — original comment was wrong)
-    """
-    prog = [
-        (addi('x1','x0', 10),  "addi x1, x0, 10      # x1 = 10"),
-        (addi('x2','x1',  5),  "addi x2, x1, 5       # x2 = 15   EX->EX x1"),
-        (add ('x3','x1','x2'), "add  x3, x1, x2      # x3 = 25   EX->EX x2, MEM->EX x1"),
-        (slli('x4','x3',  2),  "slli x4, x3, 2       # x4 = 100  EX->EX x3"),
-        (sub ('x5','x4','x1'), "sub  x5, x4, x1      # x5 = 90   EX->EX x4, MEM->EX x1"),
-        (xor ('x6','x5','x2'), "xor  x6, x5, x2      # x6 = 85   EX->EX x5, MEM->EX x2"),
-        (or_ ('x7','x6','x3'), "or   x7, x6, x3      # x7 = 93   EX->EX x6, MEM->EX x3"),
-        (and_('x8','x7','x4'), "and  x8, x7, x4      # x8 = 68   EX->EX x7, MEM->EX x4  (93&100=68)"),
-    ]
-    print_program("Program 1: RAW Hazard / Forwarding Test", prog)
-    print()
-    print("// Expected: x1=10 x2=15 x3=25 x4=100 x5=90 x6=85 x7=93 x8=68")
-    print()
-    print("// Testbench checks:")
-    checks = [(1,10,"addi x1=10"),(2,15,"addi x2=15"),(3,25,"add x3=25"),
-              (4,100,"slli x4=100"),(5,90,"sub x5=90"),(6,85,"xor x6=85"),
-              (7,93,"or x7=93"),(8,68,"and x8=68")]
-    for rn, exp, lbl in checks:
-        print(f'check_reg({rn:2d}, 32\'d{exp:<5}, "{lbl}");')
-
-# -------------------------------------------------------
-# Program 2: Load-Use Hazard Test
-# -------------------------------------------------------
-def program_load_use():
-    """
-    Store two values, then load and immediately use each.
-    Hazard unit should insert exactly one stall bubble per load-use pair.
-
-    Expected: x4=42  x5=42  x6=99  x7=57
-    dmem[100]=42  dmem[104]=99
-    """
-    prog = [
-        (addi('x1','x0',100), "addi x1, x0, 100    # base = 100"),
-        (addi('x2','x0', 42), "addi x2, x0, 42     # val = 42"),
-        (sw  ('x2','x1',  0), "sw   x2, 0(x1)      # mem[100] = 42"),
-        (addi('x3','x0', 99), "addi x3, x0, 99     # val = 99"),
-        (sw  ('x3','x1',  4), "sw   x3, 4(x1)      # mem[104] = 99"),
-        (lw  ('x4','x1',  0), "lw   x4, 0(x1)      # x4 = 42   <load>"),
-        (add ('x5','x4','x0'),"add  x5, x4, x0     # x5 = x4   LOAD-USE stall"),
-        (lw  ('x6','x1',  4), "lw   x6, 4(x1)      # x6 = 99   <load>"),
-        (sub ('x7','x6','x4'),"sub  x7, x6, x4     # x7 = 57   LOAD-USE stall"),
-    ]
-    print_program("Program 2: Load-Use Hazard Test", prog)
-    print()
-    print("// Expected: x4=42  x5=42  x6=99  x7=57")
-    print("// dmem[0x64]=42  dmem[0x68]=99")
-    print()
-    print("// Testbench checks:")
-    checks = [(4,42,"lw x4=42"),(5,42,"add x5=42"),(6,99,"lw x6=99"),(7,57,"sub x7=57")]
-    for rn, exp, lbl in checks:
-        print(f'check_reg({rn:2d}, 32\'d{exp:<5}, "{lbl}");')
-    print('check_dmem(32\'h00000064, 32\'d42,  "sw x2->mem[100]");')
-    print('check_dmem(32\'h00000068, 32\'d99,  "sw x3->mem[104]");')
-
-# -------------------------------------------------------
-# Program 3: Branch Penalty Test
-# -------------------------------------------------------
-def program_branch_penalty():
-    """
-    BEQ is taken, flushing 2 instructions (2-cycle branch penalty).
-    x3 and x4 should remain 0 (squashed).
-
-    Layout:
-      0x00: addi x1, x0, 5
-      0x04: addi x2, x0, 5
-      0x08: beq  x1, x2, +12   -> jumps to 0x14
-      0x0C: addi x3, x0, 99    <- squashed
-      0x10: addi x4, x0, 88    <- squashed
-      0x14: addi x5, x0, 1     <- branch target
-      0x18: addi x6, x0, 2
-
-    Expected: x1=5 x2=5 x3=0 x4=0 x5=1 x6=2
-    """
-    prog = [
-        (addi('x1','x0',  5), "addi x1, x0, 5      # x1 = 5"),
-        (addi('x2','x0',  5), "addi x2, x0, 5      # x2 = 5"),
-        (beq ('x1','x2', 12), "beq  x1, x2, +12    # taken -> flush 2 instrs"),
-        (addi('x3','x0', 99), "addi x3, x0, 99     # SQUASHED"),
-        (addi('x4','x0', 88), "addi x4, x0, 88     # SQUASHED"),
-        (addi('x5','x0',  1), "addi x5, x0, 1      # x5 = 1  (branch target)"),
-        (addi('x6','x0',  2), "addi x6, x0, 2      # x6 = 2"),
-    ]
-    print_program("Program 3: Branch Penalty Test", prog)
-    print()
-    print("// Expected: x1=5 x2=5 x3=0 x4=0 x5=1 x6=2")
-    print()
-    print("// Testbench checks:")
-    checks = [(1,5,"addi x1=5"),(2,5,"addi x2=5"),(3,0,"x3 squashed=0"),
-              (4,0,"x4 squashed=0"),(5,1,"addi x5=1"),(6,2,"addi x6=2")]
-    for rn, exp, lbl in checks:
-        print(f'check_reg({rn:2d}, 32\'d{exp:<5}, "{lbl}");')
-
-# -------------------------------------------------------
-# Program 4: Mixed Workload / IPC Measurement
-# -------------------------------------------------------
-def program_mixed_ipc():
-    """
-    Loop 8 times: load array[i], increment by 1, store back.
-    Base address = 200 (0xC8). Array pre-initialized to 0.
-
-    After loop: array[0..7] = 1
-    Post-loop:  x7=1, x8=1, x9=2
-
-    Loop branch offset = 0x0C - 0x24 = -24
-    """
-    prog = [
-        (addi('x1','x0',  0),  "addi x1, x0, 0      # i = 0"),
-        (addi('x2','x0',  8),  "addi x2, x0, 8      # bound = 8"),
-        (addi('x3','x0',200),  "addi x3, x0, 200    # base addr = 200"),
-        # loop body (starts at 0x0C)
-        (slli('x4','x1',  2),  "slli x4, x1, 2      # x4 = i*4"),
-        (add ('x5','x3','x4'), "add  x5, x3, x4     # x5 = base+offset"),
-        (lw  ('x6','x5',  0),  "lw   x6, 0(x5)      # x6 = array[i]"),
-        (addi('x6','x6',  1),  "addi x6, x6, 1      # x6++"),
-        (sw  ('x6','x5',  0),  "sw   x6, 0(x5)      # array[i] = x6"),
-        (addi('x1','x1',  1),  "addi x1, x1, 1      # i++"),
-        (blt ('x1','x2',-24),  "blt  x1, x2, -24    # if i<8, loop"),
-        # post-loop (starts at 0x28)
-        (lw  ('x7','x3',  0),  "lw   x7, 0(x3)      # x7 = array[0] = 1"),
-        (lw  ('x8','x3',  4),  "lw   x8, 4(x3)      # x8 = array[1] = 1"),
-        (add ('x9','x7','x8'), "add  x9, x7, x8     # x9 = 2"),
-    ]
-    print_program("Program 4: Mixed Workload / IPC Measurement", prog)
-    print()
-    print("// Expected: array[0..7]=1, x7=1, x8=1, x9=2")
-    print()
-    print("// Testbench checks:")
-    checks = [(7,1,"lw x7=1"),(8,1,"lw x8=1"),(9,2,"add x9=2")]
-    for rn, exp, lbl in checks:
-        print(f'check_reg({rn:2d}, 32\'d{exp:<5}, "{lbl}");')
-    for i in range(8):
-        addr = 200 + i * 4
-        print(f'check_dmem(32\'h{addr:08X}, 32\'d1, "array[{i}]=1");')
-
-# -------------------------------------------------------
-# Main
-# -------------------------------------------------------
-if __name__ == "__main__":
-    print("// RISC-V RV32I Test Programs")
-    print("// Load one program at a time into imem[] starting at 0x000")
-    print()
-    program_raw_hazards()
-    print("\n" + "="*70 + "\n")
-    program_load_use()
-    print("\n" + "="*70 + "\n")
-    program_branch_penalty()
-    print("\n" + "="*70 + "\n")
-    program_mixed_ipc()
+if __name__ == '__main__':
+    for addr, m, args, comment in program:
+        word = E[m](*args)
+        argstr = ', '.join(str(a) for a in args)
+        print(f"        imem['h{addr:03X} >> 2] = 32'h{word:08X}; // {m:<6}{argstr:<16} # {comment}")

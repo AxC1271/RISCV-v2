@@ -14,21 +14,25 @@ module register_file (
     input  logic       reg_write
 );
 
-    logic[31:0] registers [0:31];
+    logic[31:0] mem [0:31];
 
-    assign rd_data1 = registers[rd_addr1];
-    assign rd_data2 = registers[rd_addr2];
+    logic bypass1, bypass2;
+    assign bypass1 = reg_write && (wr_addr != 5'b0) && (wr_addr == rd_addr1);
+    assign bypass2 = reg_write && (wr_addr != 5'b0) && (wr_addr == rd_addr2);
 
-    // write process should be clocked
+    assign rd_data1 = bypass1 ? wr_data : mem[rd_addr1];
+    assign rd_data2 = bypass2 ? wr_data : mem[rd_addr2];
+
     always_ff @(posedge clk) begin
         if (!rst_n) begin
             for (int i = 0; i < 32; i++) begin
-                registers[i] <= 32'h0;
+                mem[i] <= 32'h0;
             end
         end else begin
             if (reg_write && wr_addr != 5'b00000) begin
-                registers[wr_addr] <= wr_data;
+                mem[wr_addr] <= wr_data;
             end
         end
     end
+
 endmodule

@@ -1,4 +1,4 @@
-arith_logic_unit.sv 
+alu.sv 
 branch_unit.sv
 instr_cache.sv 
 data_cache.sv 

@@ -2,7 +2,7 @@ module ifid_register (
     input  logic clk,
     input  logic rst_n,
     input  logic stall,
-    input  logic flush, 
+    input  logic flush,
     input  logic [31:0] if_pc,
     input  logic [31:0] if_instr,
     output logic [31:0] id_pc,
@@ -13,7 +13,7 @@ module ifid_register (
             id_pc    <= 32'h0;
             id_instr <= 32'h00000013;
         end else if (stall) begin
-            // do nothing
+            // hold
         end else begin
             id_pc    <= if_pc;
             id_instr <= if_instr;

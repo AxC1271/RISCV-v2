@@ -1,14 +1,19 @@
 module control_unit (
-    input logic[31:0] instruction,
+    input  logic[31:0] instruction,
 
     output logic[3:0] alu_opcode,
-    output logic alusrc,
-    output logic regwrite,
-    output logic memread,
-    output logic memwrite,
-    output logic branch,
-    output logic memtoreg,
-    output logic jump
+    output logic[1:0] op_a_sel,   // 00 = rs1, 01 = pc, 10 = zero
+    output logic      alusrc,     // 0 = rs2, 1 = imm
+    output logic      regwrite,
+    output logic      memread,
+    output logic      memwrite,
+    output logic      branch,
+    output logic      memtoreg,
+    output logic      jump,       
+    output logic      jalr,       
+    output logic      uses_rs1,   
+    output logic      uses_rs2,
+    output logic      ebreak
 );
 
     localparam OP_R_TYPE  = 7'b0110011;
@@ -18,6 +23,10 @@ module control_unit (
     localparam OP_BRANCH  = 7'b1100011;
     localparam OP_JAL     = 7'b1101111;
     localparam OP_JALR    = 7'b1100111;
+    localparam OP_LUI     = 7'b0110111;
+    localparam OP_AUIPC   = 7'b0010111;
+    localparam OP_FENCE   = 7'b0001111;
+    localparam OP_SYSTEM  = 7'b1110011;
 
     localparam ALU_ADD  = 4'b0000;
     localparam ALU_SUB  = 4'b0001;
@@ -30,9 +39,14 @@ module control_unit (
     localparam ALU_SLT  = 4'b1000;
     localparam ALU_SLTU = 4'b1001;
 
+    localparam OPA_RS1  = 2'b00;
+    localparam OPA_PC   = 2'b01;
+    localparam OPA_ZERO = 2'b10;
+
     always_comb begin
         // default values
-        alu_opcode = 4'b0000;
+        alu_opcode = ALU_ADD;
+        op_a_sel   = OPA_RS1;
         alusrc     = 1'b0;
         regwrite   = 1'b0;
         memread    = 1'b0;
@@ -40,11 +54,16 @@ module control_unit (
         memtoreg   = 1'b0;
         branch     = 1'b0;
         jump       = 1'b0;
+        jalr       = 1'b0;
+        uses_rs1   = 1'b0;
+        uses_rs2   = 1'b0;
+        ebreak     = 1'b0;
 
         case (instruction[6:0]) // opcode check
             OP_R_TYPE: begin
                 regwrite = 1'b1;
-                alusrc   = 1'b0;
+                uses_rs1 = 1'b1;
+                uses_rs2 = 1'b1;
 
                 case (instruction[14:12]) // check funct3
                     3'b000: alu_opcode  = instruction[30] ? ALU_SUB : ALU_ADD;
@@ -55,15 +74,16 @@ module control_unit (
                     3'b101: alu_opcode  = instruction[30] ? ALU_SRA : ALU_SRL;
                     3'b110: alu_opcode  = ALU_OR;
                     3'b111: alu_opcode  = ALU_AND;
-                    default: alu_opcode = 4'b0000;
+                    default: alu_opcode = ALU_ADD;
                 endcase
             end
 
             OP_I_ARITH: begin
                 regwrite = 1'b1;
                 alusrc   = 1'b1;
+                uses_rs1 = 1'b1;
 
-                case(instruction[14:12])
+                case (instruction[14:12])
                     3'b000: alu_opcode  = ALU_ADD;
                     3'b001: alu_opcode  = ALU_SLL;
                     3'b010: alu_opcode  = ALU_SLT;
@@ -72,26 +92,29 @@ module control_unit (
                     3'b101: alu_opcode  = instruction[30] ? ALU_SRA : ALU_SRL;
                     3'b110: alu_opcode  = ALU_OR;
                     3'b111: alu_opcode  = ALU_AND;
-                    default: alu_opcode = 4'b0000;
+                    default: alu_opcode = ALU_ADD;
                 endcase
             end
 
             OP_LOAD: begin
-                alusrc     = 1'b1;
-                regwrite   = 1'b1;
-                memread    = 1'b1;
-                memtoreg   = 1'b1;
-                alu_opcode = ALU_ADD;
+                alusrc   = 1'b1;
+                regwrite = 1'b1;
+                memread  = 1'b1;
+                memtoreg = 1'b1;
+                uses_rs1 = 1'b1;
             end
 
             OP_STORE: begin
-                alusrc     = 1'b1;
-                memwrite   = 1'b1;
-                alu_opcode = ALU_ADD;
+                alusrc   = 1'b1;
+                memwrite = 1'b1;
+                uses_rs1 = 1'b1;
+                uses_rs2 = 1'b1;
             end
 
             OP_BRANCH: begin
-                branch = 1'b1;
+                branch   = 1'b1;
+                uses_rs1 = 1'b1;
+                uses_rs2 = 1'b1;
             end
 
             OP_JAL: begin
@@ -102,11 +125,37 @@ module control_unit (
             OP_JALR: begin
                 regwrite = 1'b1;
                 jump     = 1'b1;
+                jalr     = 1'b1;
                 alusrc   = 1'b1;
+                uses_rs1 = 1'b1;
+            end
+
+            OP_LUI: begin
+                regwrite = 1'b1;
+                alusrc   = 1'b1;
+                op_a_sel = OPA_ZERO;
+            end
+
+            OP_AUIPC: begin
+                regwrite = 1'b1;
+                alusrc   = 1'b1;
+                op_a_sel = OPA_PC;
+            end
+
+            OP_FENCE: begin
+                // single hart, no reordering between this core and memory: NOP
+            end
+
+            OP_SYSTEM: begin
+                // no CSRs / trap handling in base rv32i, for my implementation
+                // it's functionally equivalent to a nop instruction
+                if (instruction[31:20] == 12'h001) begin
+                    ebreak = 1'b1;
+                end
             end
 
             default: begin
-            // leave empty
+                // undecoded = NOP (all controls deasserted)
             end
         endcase
     end

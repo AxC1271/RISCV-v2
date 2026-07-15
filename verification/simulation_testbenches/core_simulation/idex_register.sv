@@ -13,6 +13,7 @@ module idex_register (
     input  logic[4:0]  id_rs2,
     input  logic[4:0]  id_rd,
     input  logic[3:0]  id_alu_opcode,
+    input  logic[1:0]  id_op_a_sel,
     input  logic       id_alusrc,
     input  logic       id_memread,
     input  logic       id_memwrite,
@@ -20,6 +21,8 @@ module idex_register (
     input  logic       id_regwrite,
     input  logic       id_branch,
     input  logic       id_jump,
+    input  logic       id_jalr,
+    input  logic       id_ebreak,
 
     output logic[31:0] ex_pc,
     output logic[31:0] ex_instr,
@@ -30,13 +33,16 @@ module idex_register (
     output logic[4:0]  ex_rs2,
     output logic[4:0]  ex_rd,
     output logic[3:0]  ex_alu_opcode,
+    output logic[1:0]  ex_op_a_sel,
     output logic       ex_alusrc,
     output logic       ex_memread,
     output logic       ex_memwrite,
     output logic       ex_memtoreg,
     output logic       ex_regwrite,
     output logic       ex_branch,
-    output logic       ex_jump
+    output logic       ex_jump,
+    output logic       ex_jalr,
+    output logic       ex_ebreak
 );
 
     always_ff @(posedge clk) begin
@@ -50,6 +56,7 @@ module idex_register (
             ex_rs2        <= 5'b0;
             ex_rd         <= 5'b0;
             ex_alu_opcode <= 4'b0;
+            ex_op_a_sel   <= 2'b0;
             ex_alusrc     <= 1'b0;
             ex_memread    <= 1'b0;
             ex_memwrite   <= 1'b0;
@@ -57,8 +64,10 @@ module idex_register (
             ex_regwrite   <= 1'b0;
             ex_branch     <= 1'b0;
             ex_jump       <= 1'b0;
+            ex_jalr       <= 1'b0;
+            ex_ebreak     <= 1'b0;
         end else if (stall) begin
-            // do nothing
+            // hold
         end else begin
             ex_pc         <= id_pc;
             ex_instr      <= id_instr;
@@ -69,6 +78,7 @@ module idex_register (
             ex_rs2        <= id_rs2;
             ex_rd         <= id_rd;
             ex_alu_opcode <= id_alu_opcode;
+            ex_op_a_sel   <= id_op_a_sel;
             ex_alusrc     <= id_alusrc;
             ex_memread    <= id_memread;
             ex_memwrite   <= id_memwrite;
@@ -76,6 +86,8 @@ module idex_register (
             ex_regwrite   <= id_regwrite;
             ex_branch     <= id_branch;
             ex_jump       <= id_jump;
+            ex_jalr       <= id_jalr;
+            ex_ebreak     <= id_ebreak;
         end
     end
 

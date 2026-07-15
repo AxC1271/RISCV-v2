@@ -1,7 +1,13 @@
-module instr_cache # (
+// Direct-mapped I-cache with a combinational hit path.
+//
+// Hits are zero-wait: cache_ready and cpu_rdata are valid in the same cycle
+// the address is presented. On a miss the FSM refills the line, returns to
+// IDLE, and the (held) PC then hits combinationally. 
+
+module instr_cache #(
     parameter NUM_SETS       = 64,
     parameter WORDS_PER_LINE = 4,
-    parameter ADDR_BITS      = 32,
+    parameter ADDR_BITS      = 32
 ) (
     input  logic       clk,
     input  logic       rst_n,
@@ -18,7 +24,6 @@ module instr_cache # (
     localparam INDEX_BITS  = $clog2(NUM_SETS);
     localparam BYTE_BITS   = 2;
     localparam TAG_BITS    = ADDR_BITS - INDEX_BITS - OFFSET_BITS - BYTE_BITS;
-    localparam REFILL_BITS = $clog2(WORDS_PER_LINE);
 
     logic[TAG_BITS-1:0] tag_ram   [0:NUM_SETS-1];
     logic               valid_ram [0:NUM_SETS-1];
@@ -31,9 +36,6 @@ module instr_cache # (
     assign addr_tag    = cpu_addr[ADDR_BITS-1:INDEX_BITS+OFFSET_BITS+BYTE_BITS];
     assign addr_index  = cpu_addr[INDEX_BITS+OFFSET_BITS+BYTE_BITS-1:OFFSET_BITS+BYTE_BITS];
     assign addr_offset = cpu_addr[OFFSET_BITS+BYTE_BITS-1:BYTE_BITS];
-    
-    logic hit;
-    assign hit = valid_ram[addr_index] && (tag_ram[addr_index] == addr_tag);
 
     typedef enum logic [1:0] {
         IDLE   = 2'd0,
@@ -41,65 +43,55 @@ module instr_cache # (
     } cache_state;
 
     cache_state state;
-    logic[REFILL_BITS-1:0] refill_count;
+    logic[OFFSET_BITS-1:0] refill_count;
 
-    logic[TAG_BITS-1:0]    miss_tag;
-    logic[INDEX_BITS-1:0]  miss_index;
-    logic[OFFSET_BITS-1:0] miss_offset;
+    logic[TAG_BITS-1:0]   miss_tag;
+    logic[INDEX_BITS-1:0] miss_index;
 
-    logic[31:0] hit_data_r;
-    logic       cache_ready_r;
+    logic hit;
+    assign hit = valid_ram[addr_index] && (tag_ram[addr_index] == addr_tag);
+
+    // combinational hit path
+    assign cache_ready = (state == IDLE) && cpu_req && hit;
+    assign cpu_rdata   = cache_ram[addr_index][addr_offset];
+
+    // memory side
+    assign mem_req  = (state == REFILL);
+    assign mem_addr = {miss_tag, miss_index, refill_count, 2'b00};
 
     always_ff @(posedge clk) begin
         if (!rst_n) begin
-            state         <= IDLE;
-            refill_count  <= '0;
-            miss_tag      <= '0;
-            miss_index    <= '0;
-            miss_offset   <= '0;
-            hit_data_r    <= '0;
-            cache_ready_r <= 1'b0;
-            for (int i = 0; i < NUM_SETS; i++) 
+            state        <= IDLE;
+            refill_count <= '0;
+            miss_tag     <= '0;
+            miss_index   <= '0;
+            for (int i = 0; i < NUM_SETS; i++)
                 valid_ram[i] <= 1'b0;
         end else begin
-
-            cache_ready_r <= 1'b0; 
-
-            case(state) 
+            case (state)
                 IDLE: begin
-                    if (cpu_req) begin
-                        if (hit) begin
-                            hit_data_r    <= cache_ram[addr_index][addr_offset];
-                            cache_ready_r <= 1'b1;
-                        end else begin
-                            miss_tag     <= addr_tag;
-                            miss_index   <= addr_index;
-                            miss_offset  <= addr_offset;
-                            refill_count <= '0;
-                            state        <= REFILL;
-                        end
+                    if (cpu_req && !hit) begin
+                        miss_tag     <= addr_tag;
+                        miss_index   <= addr_index;
+                        refill_count <= '0;
+                        // invalidate before refill so partial lines never hit
+                        valid_ram[addr_index] <= 1'b0;
+                        state        <= REFILL;
                     end
                 end
                 REFILL: begin
                     if (mem_ready) begin
                         cache_ram[miss_index][refill_count] <= mem_rdata;
-                        
-                        if (refill_count == miss_offset)
-                            hit_data_r <= mem_rdata;
-                        
-                        if (refill_count == WORDS_PER_LINE-1) begin
+                        if (refill_count == OFFSET_BITS'(WORDS_PER_LINE-1)) begin
                             tag_ram[miss_index]   <= miss_tag;
                             valid_ram[miss_index] <= 1'b1;
-                            cache_ready_r         <= 1'b1;
                             state                 <= IDLE;
-                        end else begin 
+                        end else begin
                             refill_count <= refill_count + 1'b1;
                         end
                     end
                 end
-
                 default: state <= IDLE;
-
             endcase
         end
     end
