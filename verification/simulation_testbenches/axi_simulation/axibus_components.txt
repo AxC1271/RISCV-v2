@@ -1,7 +1,0 @@
-axi_bus.sv
-axi_bus_tb.sv
-axibus_interconnect.sv
-axislave_bootloader.sv
-axislave_i2c.sv
-axislave_spi.sv
-axislave_uart.sv

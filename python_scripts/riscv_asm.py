@@ -1,29 +1,3 @@
-#!/usr/bin/env python3
-"""
-RISC-V RV32I assembler — converts assembly instructions to 32-bit hex.
-
-Usage:
-    python3 riscv_asm.py
-
-Output:
-    Prints SystemVerilog imem[] assignments for each test program,
-    ready to paste directly into your testbench.
-
-Supported instructions:
-    R-type: add, sub, and, or, xor, sll, srl, sra, slt, sltu
-    I-type: addi, andi, ori, xori, slti, sltiu, slli, srli, srai
-            lw, lh, lb, lhu, lbu
-    S-type: sw, sh, sb
-    B-type: beq, bne, blt, bge, bltu, bgeu
-    U-type: lui, auipc
-    J-type: jal
-    I-type: jalr
-"""
-
-##!/usr/bin/env python3
-# tiny rv32i assembler for testbench program generation
-# usage: encode(mnemonic, ...) -> 32-bit int
-
 def r(op, f3, f7, rd, rs1, rs2):
     return (f7 << 25) | (rs2 << 20) | (rs1 << 15) | (f3 << 12) | (rd << 7) | op
 
@@ -51,6 +25,7 @@ def j(rd, imm):
 E = {
     'addi':  lambda rd, rs1, imm: i(0b0010011, 0b000, rd, rs1, imm),
     'slli':  lambda rd, rs1, sh:  i(0b0010011, 0b001, rd, rs1, sh),
+    'andi':  lambda rd, rs1, imm: i(0b0010011, 0b111, rd, rs1, imm),
     'srai':  lambda rd, rs1, sh:  i(0b0010011, 0b101, rd, rs1, sh | 0x400),
     'add':   lambda rd, rs1, rs2: r(0b0110011, 0b000, 0b0000000, rd, rs1, rs2),
     'sub':   lambda rd, rs1, rs2: r(0b0110011, 0b000, 0b0100000, rd, rs1, rs2),
@@ -113,7 +88,16 @@ program = [
     (0xAC, 'srai', (23, 17, 4),      'x23 = 0xFFFFFFFF'),
     (0xB0, 'sltu', (24, 0, 17),      'x24 = 1'),
     (0xB4, 'slt',  (25, 17, 0),      'x25 = 1'),
-    (0xB8, 'ebreak', (),             'halt'),
+
+    (0xB8, 'addi', (26, 0, 1),       'x26 = 1'),
+    (0xBC, 'slli', (26, 26, 11),     'x26 = 0x800'),
+    (0xC0, 'add',  (28, 1, 26),      'x28 = 0x864'),
+    (0xC4, 'add',  (29, 28, 26),     'x29 = 0x1064'),
+    (0xC8, 'sw',   (28, 2, 0),       'mem[0x864] = 42   (way fill)'),
+    (0xCC, 'sw',   (29, 3, 0),       'mem[0x1064] = 142 (evicts dirty 0x060)'),
+    (0xD0, 'lw',   (30, 1, 0),       'x30 = 42  (refill after writeback)'),
+    (0xD4, 'lw',   (31, 29, 0),      'x31 = 142'),
+    (0xD8, 'ebreak', (),             'halt'),
 ]
 
 if __name__ == '__main__':

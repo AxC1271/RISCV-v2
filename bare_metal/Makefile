@@ -8,6 +8,8 @@ MARCH   = rv32i
 MABI    = ilp32
 LDSCRIPT = linker.ld
 
+PORT    ?= /dev/tty.usbserial-0001
+
 CFLAGS  = -march=$(MARCH) -mabi=$(MABI) -Wall -Wextra -O2 \
           -ffreestanding -nostdlib -nostartfiles -g
 LDFLAGS = -T $(LDSCRIPT) -march=$(MARCH) -mabi=$(MABI) \
@@ -19,11 +21,11 @@ OBJS    := $(OBJS:.S=.o)
 
 TARGET  = firmware
 
-.PHONY: all clean disasm hex size
+.PHONY: all clean disasm size load
 
 all: $(TARGET).elf $(TARGET).bin $(TARGET).hex size
 
-%.o: %.c main.h
+%.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 %.o: %.S
@@ -42,7 +44,10 @@ disasm: $(TARGET).elf
 	$(OBJDUMP) -d $< | less
 
 size: $(TARGET).elf
-	$(SIZE) $
+	$(SIZE) $<
+
+load: $(TARGET).bin
+	python3 ../send_firmware.py $(TARGET).bin -p $(PORT)
 
 clean:
 	rm -f $(OBJS) $(TARGET).elf $(TARGET).bin $(TARGET).hex
