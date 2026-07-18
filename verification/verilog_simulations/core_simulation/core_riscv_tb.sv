@@ -41,8 +41,6 @@ module core_riscv_tb();
         .dmem_wr_en(dmem_wr_en),
         .dmem_rdata(dmem_rdata),
         .dmem_ready(dmem_ready),
-        // no peripherals in the core-only TB: neither program touches
-        // addresses >= PERIPH_BASE, so these are inert tie-offs
         .periph_rdata(32'h0),
         .periph_ready(1'b1),
         .periph_addr(), .periph_wdata(), .periph_wstrb(),
@@ -58,7 +56,6 @@ module core_riscv_tb();
         forever #(CLK_PERIOD/2) clk = ~clk;
     end
 
-    // instruction memory module
     logic [31:0] imem [0:IMEM_WORDS-1];
     logic        imem_ready_r;
     logic [31:0] imem_index;
@@ -158,7 +155,7 @@ module core_riscv_tb();
 
     assign imem_ready = imem_ready_r;
 
-    // data memory
+
     logic [31:0] dmem [0:DMEM_WORDS-1];
     logic        dmem_ready_r;
 
@@ -177,7 +174,6 @@ module core_riscv_tb();
 
     assign dmem_ready = dmem_ready_r;
 
-    // checks
     function automatic [31:0] read_reg(input int unsigned n);
         read_reg = dut.rf.mem[n];
     endfunction
@@ -217,11 +213,14 @@ module core_riscv_tb();
         w = byte_addr[3:2];
         found = 1'b0;
 
-        if (dut.dcache.valid_array[s][0] && dut.dcache.tag_array[s][0] == t) begin
-            got   = dut.dcache.data_array[s][0][w];
+        // byte-plane arrays, flat index {set, way, word}
+        if (dut.dcache.valid_array[s][0] && dut.dcache.tag_w0[s] == t) begin
+            got   = {dut.dcache.data_p3[{s, 1'b0, w}], dut.dcache.data_p2[{s, 1'b0, w}],
+                     dut.dcache.data_p1[{s, 1'b0, w}], dut.dcache.data_p0[{s, 1'b0, w}]};
             found = 1'b1;
-        end else if (dut.dcache.valid_array[s][1] && dut.dcache.tag_array[s][1] == t) begin
-            got   = dut.dcache.data_array[s][1][w];
+        end else if (dut.dcache.valid_array[s][1] && dut.dcache.tag_w1[s] == t) begin
+            got   = {dut.dcache.data_p3[{s, 1'b1, w}], dut.dcache.data_p2[{s, 1'b1, w}],
+                     dut.dcache.data_p1[{s, 1'b1, w}], dut.dcache.data_p0[{s, 1'b1, w}]};
             found = 1'b1;
         end
 
