@@ -1,7 +1,7 @@
 // 2-way set-associative write-back D-cache with a combinational hit path
 // and byte write strobes (wstrb) for SB/SH support.
 
-module data_cache #(
+module data_cache # (
     parameter CACHE_SIZE = 4096,
     parameter BLOCK_SIZE = 16,
     parameter ADDR_WIDTH = 32,

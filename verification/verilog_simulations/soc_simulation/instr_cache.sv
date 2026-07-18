@@ -1,10 +1,5 @@
-// Direct-mapped I-cache with a combinational hit path.
-//
-// Hits are zero-wait: cache_ready and cpu_rdata are valid in the same cycle
-// the address is presented. On a miss the FSM refills the line, returns to
-// IDLE, and the (held) PC then hits combinationally. 
-
-module instr_cache #(
+// direct-mapped I-cache with a combinational hit path
+module instr_cache # (
     parameter NUM_SETS       = 64,
     parameter WORDS_PER_LINE = 4,
     parameter ADDR_BITS      = 32
@@ -25,9 +20,9 @@ module instr_cache #(
     localparam BYTE_BITS   = 2;
     localparam TAG_BITS    = ADDR_BITS - INDEX_BITS - OFFSET_BITS - BYTE_BITS;
 
-    logic[TAG_BITS-1:0] tag_ram   [0:NUM_SETS-1];
-    logic               valid_ram [0:NUM_SETS-1];
-    logic[31:0]         cache_ram [0:NUM_SETS-1][0:WORDS_PER_LINE-1];
+    (* ram_style = "distributed" *) logic[31:0] cache_ram [0:NUM_SETS*WORDS_PER_LINE-1];
+    (* ram_style = "distributed" *) logic[TAG_BITS-1:0] tag_ram [0:NUM_SETS-1];
+    logic valid_ram [0:NUM_SETS-1];
 
     logic[TAG_BITS-1:0]    addr_tag;
     logic[INDEX_BITS-1:0]  addr_index;
@@ -53,7 +48,7 @@ module instr_cache #(
 
     // combinational hit path
     assign cache_ready = (state == IDLE) && cpu_req && hit;
-    assign cpu_rdata   = cache_ram[addr_index][addr_offset];
+    assign cpu_rdata   = cache_ram[{addr_index, addr_offset}];
 
     // memory side
     assign mem_req  = (state == REFILL);
@@ -81,7 +76,7 @@ module instr_cache #(
                 end
                 REFILL: begin
                     if (mem_ready) begin
-                        cache_ram[miss_index][refill_count] <= mem_rdata;
+                        cache_ram[{miss_index, refill_count}] <= mem_rdata;
                         if (refill_count == OFFSET_BITS'(WORDS_PER_LINE-1)) begin
                             tag_ram[miss_index]   <= miss_tag;
                             valid_ram[miss_index] <= 1'b1;

@@ -116,3 +116,11 @@ Not bothering with STA on individual modules like the ALU or branch unit by them
 real clock context around them they only show raw propagation delay, not actual setup/hold slack.
 What actually matters is whether a full pipeline stage fits inside the clock period once everything
 is wired together, and that only means something once the real core exists.
+
+---
+
+## Basys3 FPGA Timing Report
+
+---
+
+## Sky130nm ASIC Timing Report
