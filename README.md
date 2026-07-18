@@ -40,14 +40,15 @@ RISCV-v2/
 ├── bare_metal/                    # bare-metal C firmware, assembly, linker scripts
 ├── images/                        # diagrams referenced in this README
 ├── python_scripts/
-│   └── riscv_asm.py               # assembler: RISC-V instructions -> binaries for testbenching
-├── sta_axi/                       # static timing analysis, AXI-Lite interconnect
-├── sta_cpu/                       # static timing analysis, CPU core
+│   ├── riscv_asm.py               # assembler: RISC-V instructions -> binaries for testbenching
+│   └── firmware.py                # what I plan on using for transmitting code serially
+├── rtl_design/                    # raw Verilog without the SVAs / testbench infrastructure
+├── timing_analysis/               # static timing analysis through Xilinx and Sky130nm
 ├── verification/
 │   ├── formal_verification/       # SymbiYosys/BMC proofs for individual modules (start here: core_formal/alu)
-│   └── simulation_testbenches/    # full-CPU RTL source + Icarus testbenches (RTL lives here directly)
+│   └── verilog_simulations/       # full-CPU RTL source + Icarus testbenches 
 ├── constraints.xdc                # synthesis timing constraints
-└── README.md
+└── README.md                      # project summary + overview
 ```
 
 ---

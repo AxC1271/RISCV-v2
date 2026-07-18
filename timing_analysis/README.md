@@ -121,6 +121,10 @@ is wired together, and that only means something once the real core exists.
 
 ## Basys3 FPGA Timing Report
 
+<div align="center">
+  <img src="../images/core-pipeline.png" />
+</div>
+
 ---
 
 ## Sky130nm ASIC Timing Report
