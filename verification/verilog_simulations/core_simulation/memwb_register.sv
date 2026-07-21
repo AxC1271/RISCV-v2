@@ -1,5 +1,3 @@
-`timescale 1ns / 1ps
-
 module memwb_register (
     input  logic clk,
     input  logic rst_n,
@@ -10,13 +8,15 @@ module memwb_register (
     input  logic        mem_regwrite,
     input  logic        mem_memtoreg,
     input  logic        mem_ebreak,
+    input  logic        mem_valid,
 
     output logic [31:0] wb_alu_result,
     output logic [31:0] wb_rdata,
     output logic [4:0]  wb_rd,
     output logic        wb_regwrite,
     output logic        wb_memtoreg,
-    output logic        wb_ebreak
+    output logic        wb_ebreak,
+    output logic        wb_valid
 );
 
     always_ff @(posedge clk) begin
@@ -27,6 +27,7 @@ module memwb_register (
             wb_regwrite   <= 1'b0;
             wb_memtoreg   <= 1'b0;
             wb_ebreak     <= 1'b0;
+            wb_valid      <= 1'b0;
         end else if (stall) begin
             // hold
         end else begin
@@ -36,6 +37,7 @@ module memwb_register (
             wb_regwrite   <= mem_regwrite;
             wb_memtoreg   <= mem_memtoreg;
             wb_ebreak     <= mem_ebreak;
+            wb_valid      <= mem_valid;
         end
     end
 endmodule

@@ -5,18 +5,22 @@ module ifid_register (
     input  logic flush,
     input  logic [31:0] if_pc,
     input  logic [31:0] if_instr,
+    input  logic        if_valid,
     output logic [31:0] id_pc,
-    output logic [31:0] id_instr
+    output logic [31:0] id_instr,
+    output logic        id_valid
 );
     always_ff @(posedge clk) begin
         if (!rst_n || flush) begin
             id_pc    <= 32'h0;
             id_instr <= 32'h00000013;
+            id_valid <= 1'b0;            
         end else if (stall) begin
             // hold
         end else begin
             id_pc    <= if_pc;
             id_instr <= if_instr;
+            id_valid <= if_valid;
         end
     end
 endmodule

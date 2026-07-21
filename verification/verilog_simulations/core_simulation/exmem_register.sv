@@ -2,18 +2,16 @@ module exmem_register (
     input  logic clk,
     input  logic rst_n,
     input  logic stall,
-
-    // ex_result is the post-mux EX value: pc+4 for JAL/JALR, otherwise the
-    // ALU result. jump is fully consumed in EX, so it does not travel here.
     input  logic[31:0] ex_result,
-    input  logic[31:0] ex_store_data,   // forwarded rs2
+    input  logic[31:0] ex_store_data,  
     input  logic[4:0]  ex_rd,
-    input  logic[2:0]  ex_funct3,       // load/store size + sign
+    input  logic[2:0]  ex_funct3,    
     input  logic       ex_memread,
     input  logic       ex_memwrite,
     input  logic       ex_memtoreg,
     input  logic       ex_regwrite,
     input  logic       ex_ebreak,
+    input  logic       ex_valid,
 
     output logic[31:0] mem_alu_result,
     output logic[31:0] mem_store_data,
@@ -23,7 +21,8 @@ module exmem_register (
     output logic       mem_memwrite,
     output logic       mem_memtoreg,
     output logic       mem_regwrite,
-    output logic       mem_ebreak
+    output logic       mem_ebreak,
+    output logic       mem_valid
 );
 
     always_ff @(posedge clk) begin
@@ -37,6 +36,7 @@ module exmem_register (
             mem_memtoreg   <= 1'b0;
             mem_regwrite   <= 1'b0;
             mem_ebreak     <= 1'b0;
+            mem_valid      <= 1'b0;
         end else if (stall) begin
             // hold
         end else begin
@@ -49,6 +49,7 @@ module exmem_register (
             mem_memtoreg   <= ex_memtoreg;
             mem_regwrite   <= ex_regwrite;
             mem_ebreak     <= ex_ebreak;
+            mem_valid      <= ex_valid;
         end
     end
 

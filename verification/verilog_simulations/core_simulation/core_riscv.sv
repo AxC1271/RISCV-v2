@@ -1,6 +1,12 @@
 // 5-stage in-order RV32I core: IF -> ID -> EX -> MEM -> WB.
+
 module core_riscv # (
     parameter logic [31:0] RESET_VECTOR = 32'h0001_0000,
+    parameter ICACHE_SETS       = 64,
+    parameter ICACHE_LINE_WORDS = 4,
+    parameter DCACHE_SIZE       = 4096,
+    parameter DCACHE_BLOCK      = 16,
+    parameter DCACHE_WAYS       = 2,
     parameter logic [31:0] PERIPH_BASE  = 32'h1000_0000
 )(
     input  logic clk,
@@ -19,9 +25,6 @@ module core_riscv # (
     input  logic [31:0] dmem_rdata,
     input  logic        dmem_ready,
 
-    // uncached peripheral port (one outstanding, held until ready).
-    // addresses >= PERIPH_BASE bypass the D-cache; the consumer must pulse
-    // periph_ready exactly once per transaction (pipeline frozen until then)
     output logic [31:0] periph_addr,
     output logic [31:0] periph_wdata,
     output logic [3:0]  periph_wstrb,
@@ -37,7 +40,7 @@ module core_riscv # (
     output logic        debug_halted
 );
 
-    // pipeline control 
+    // pipeline control stuff 
     logic load_use_stall, mem_stall, fetch_stall;
     logic pc_write, ifid_stall, ifid_flush, idex_stall, idex_flush;
     logic exmem_stall, memwb_stall;
@@ -47,10 +50,13 @@ module core_riscv # (
 
     assign run = cpu_enable && !debug_halted;
 
-    // instruction fetch
+    // instruction fetch stage
     logic [31:0] pc_current, pc_next, pc_plus4;
     logic [31:0] if_instr;
     logic        icache_ready;
+
+    logic if_valid;
+    assign if_valid = run && icache_ready;
 
     assign pc_plus4 = pc_current + 32'd4;
     assign pc_next  = redirect ? redirect_target : pc_plus4;
@@ -63,7 +69,10 @@ module core_riscv # (
         .pc_out   (pc_current)
     );
 
-    instr_cache icache (
+    instr_cache # (
+        .NUM_SETS       (ICACHE_SETS),
+        .WORDS_PER_LINE (ICACHE_LINE_WORDS)
+    ) icache (
         .clk         (clk),
         .rst_n       (rst_n),
         .cpu_addr    (pc_current),
@@ -78,6 +87,7 @@ module core_riscv # (
 
     // instruction decode
     logic [31:0] id_pc, id_instr;
+    logic        id_valid;
 
     ifid_register ifid (
         .clk      (clk),
@@ -86,8 +96,10 @@ module core_riscv # (
         .flush    (ifid_flush),
         .if_pc    (pc_current),
         .if_instr (if_instr),
+        .if_valid (if_valid),
         .id_pc    (id_pc),
-        .id_instr (id_instr)
+        .id_instr (id_instr),
+        .id_valid (id_valid)
     );
 
     logic [3:0] id_alu_opcode;
@@ -143,13 +155,14 @@ module core_riscv # (
         .imm   (id_imm)
     );
 
-    // ex
+    // execute stage
     logic [31:0] ex_pc, ex_instr, ex_rs1_data, ex_rs2_data, ex_imm;
     logic [4:0]  ex_rs1, ex_rs2, ex_rd;
     logic [3:0]  ex_alu_opcode;
     logic [1:0]  ex_op_a_sel;
     logic ex_alusrc, ex_memread, ex_memwrite, ex_memtoreg, ex_regwrite;
     logic ex_branch, ex_jump, ex_jalr, ex_ebreak;
+    logic ex_valid;
 
     idex_register idex (
         .clk           (clk),
@@ -175,6 +188,7 @@ module core_riscv # (
         .id_jump       (id_jump),
         .id_jalr       (id_jalr),
         .id_ebreak     (id_ebreak),
+        .id_valid      (id_valid),
         .ex_pc         (ex_pc),
         .ex_instr      (ex_instr),
         .ex_rs1_data   (ex_rs1_data),
@@ -193,7 +207,8 @@ module core_riscv # (
         .ex_branch     (ex_branch),
         .ex_jump       (ex_jump),
         .ex_jalr       (ex_jalr),
-        .ex_ebreak     (ex_ebreak)
+        .ex_ebreak     (ex_ebreak),
+        .ex_valid      (ex_valid)
     );
 
     // forwarding
@@ -259,8 +274,7 @@ module core_riscv # (
         .branch_target (branch_target)
     );
 
-    // control transfer: JALR target from the ALU (rs1+imm, bit 0 cleared),
-    // JAL and branches from the pc+imm adder in the branch unit
+
     assign redirect        = ex_jump || branch_taken;
     assign redirect_target = ex_jalr ? {alu_result[31:1], 1'b0} : branch_target;
 
@@ -268,10 +282,11 @@ module core_riscv # (
     logic [31:0] ex_result;
     assign ex_result = ex_jump ? ex_pc + 32'd4 : alu_result;
 
-    // mem
+    // mem stage
     logic [31:0] mem_store_data;
     logic [2:0]  mem_funct3;
     logic mem_memread, mem_memwrite, mem_memtoreg, mem_ebreak;
+    logic mem_valid;
 
     exmem_register exmem (
         .clk            (clk),
@@ -286,6 +301,7 @@ module core_riscv # (
         .ex_memtoreg    (ex_memtoreg),
         .ex_regwrite    (ex_regwrite),
         .ex_ebreak      (ex_ebreak),
+        .ex_valid       (ex_valid),
         .mem_alu_result (mem_alu_result),
         .mem_store_data (mem_store_data),
         .mem_rd         (mem_rd),
@@ -294,10 +310,10 @@ module core_riscv # (
         .mem_memwrite   (mem_memwrite),
         .mem_memtoreg   (mem_memtoreg),
         .mem_regwrite   (mem_regwrite),
-        .mem_ebreak     (mem_ebreak)
+        .mem_ebreak     (mem_ebreak),
+        .mem_valid      (mem_valid)
     );
 
-    // store lane placement: replicate the byte/half and set strobes
     logic [3:0]  dcache_wstrb;
     logic [31:0] dcache_wdata;
     always_comb begin
@@ -317,12 +333,11 @@ module core_riscv # (
         endcase
     end
 
-    // uncached decode: peripheral region bypasses the D-cache entirely
     logic mem_is_periph;
     assign mem_is_periph = (mem_alu_result >= PERIPH_BASE);
 
     assign periph_addr  = mem_alu_result;
-    assign periph_wdata = dcache_wdata;   // same lane replication as cached
+    assign periph_wdata = dcache_wdata;  
     assign periph_wstrb = dcache_wstrb;
     assign periph_rd_en = mem_memread  && mem_is_periph;
     assign periph_wr_en = mem_memwrite && mem_is_periph;
@@ -330,7 +345,11 @@ module core_riscv # (
     logic [31:0] dcache_rdata;
     logic        dcache_ready;
 
-    data_cache dcache (
+    data_cache #(
+        .CACHE_SIZE (DCACHE_SIZE),
+        .BLOCK_SIZE (DCACHE_BLOCK),
+        .NUM_WAYS   (DCACHE_WAYS)
+    ) dcache (
         .clk         (clk),
         .rst_n       (rst_n),
         .addr        (mem_alu_result),
@@ -369,9 +388,10 @@ module core_riscv # (
         endcase
     end
 
-    // writeback
+    // writeback stage
     logic [31:0] wb_alu_result, wb_rdata;
     logic wb_memtoreg, wb_ebreak;
+    logic wb_valid;   // 1 = a real instruction is retiring in WB this cycle
 
     memwb_register memwb (
         .clk            (clk),
@@ -383,18 +403,20 @@ module core_riscv # (
         .mem_regwrite   (mem_regwrite),
         .mem_memtoreg   (mem_memtoreg),
         .mem_ebreak     (mem_ebreak),
+        .mem_valid      (mem_valid),
         .wb_alu_result  (wb_alu_result),
         .wb_rdata       (wb_rdata),
         .wb_rd          (wb_rd),
         .wb_regwrite    (wb_regwrite),
         .wb_memtoreg    (wb_memtoreg),
-        .wb_ebreak      (wb_ebreak)
+        .wb_ebreak      (wb_ebreak),
+        .wb_valid       (wb_valid)
     );
 
     // post-memtoreg value: register file write port AND the WB forward path
     assign wb_result = wb_memtoreg ? wb_rdata : wb_alu_result;
 
-    // hazard pipeline
+    // hazards + pipeline control
     hazard_unit hu (
         .id_rs1         (id_rs1),
         .id_rs2         (id_rs2),
@@ -417,7 +439,7 @@ module core_riscv # (
         .memwb_stall    (memwb_stall)
     );
 
-    // debug
+    // debug signals
     assign debug_pc       = pc_current;
     assign debug_instr    = id_instr;
     assign debug_reg_data = wb_result;

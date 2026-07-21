@@ -41,6 +41,8 @@ module core_riscv_tb();
         .dmem_wr_en(dmem_wr_en),
         .dmem_rdata(dmem_rdata),
         .dmem_ready(dmem_ready),
+        // no peripherals in the core-only TB: neither program touches
+        // addresses >= PERIPH_BASE, so these are inert tie-offs
         .periph_rdata(32'h0),
         .periph_ready(1'b1),
         .periph_addr(), .periph_wdata(), .periph_wstrb(),
@@ -57,17 +59,22 @@ module core_riscv_tb();
     end
 
     logic [31:0] imem [0:IMEM_WORDS-1];
-    logic        imem_ready_r;
     logic [31:0] imem_index;
     assign imem_index = (imem_addr - BASE) >> 2;
 
     int prog;
+    int MEM_LATENCY;
     initial begin
         if (!$value$plusargs("prog=%d", prog)) prog = 1;
+        if (!$value$plusargs("lat=%d", MEM_LATENCY)) MEM_LATENCY = 1;
         for (int i = 0; i < IMEM_WORDS; i++)
             imem[i] = 32'h00000013; // NOP
 
         if (prog == 2) begin
+        // torture program (riscv_asm.py): forwarded-JALR, store-data
+        // forwarding, back-to-back store->load, load-use into a branch and
+        // into store data, backward-branch loop, D-cache eviction /
+        // writeback thrash across one set
             imem['h000 >> 2] = 32'h00000097; // auipc x1, 0        # x1=BASE
             imem['h004 >> 2] = 32'h01008093; // addi  x1, x1, 16   # EX->EX
             imem['h008 >> 2] = 32'h00008167; // jalr  x2, x1, 0    # fwd rs1; x2=BASE+0xC
@@ -98,6 +105,18 @@ module core_riscv_tb();
             imem['h06C >> 2] = 32'h40070713; // addi  x14, x14, 1024
             imem['h070 >> 2] = 32'h00872783; // lw    x15, 8(x14)  # 0x1408
             imem['h074 >> 2] = 32'h00100073; // ebreak
+        end else if (prog == 3) begin
+            // cache-friendly hot loop: 1 compulsory miss, then all hits.
+            imem['h000 >> 2] = 32'h00000093; // addi x1,0,0    sum=0
+            imem['h004 >> 2] = 32'h03200113; // addi x2,0,50   count=50
+            imem['h008 >> 2] = 32'h10000193; // addi x3,0,256  base
+            imem['h00C >> 2] = 32'h00700213; // addi x4,0,7     val
+            imem['h010 >> 2] = 32'h0041A023; // sw   x4,0(x3)   compulsory miss
+            imem['h014 >> 2] = 32'h0001A283; // lw   x5,0(x3)   hot load (hits)
+            imem['h018 >> 2] = 32'h005080B3; // add  x1,x1,x5   load-use
+            imem['h01C >> 2] = 32'hFFF10113; // addi x2,x2,-1
+            imem['h020 >> 2] = 32'hFE011AE3; // bne  x2,0,loop
+            imem['h024 >> 2] = 32'h00100073; // ebreak
         end else begin
         imem['h000 >> 2] = 32'h06400093; // addi  x1, x0, 100   # x1  = 100 (base ptr)
         imem['h004 >> 2] = 32'h02A00113; // addi  x2, x0, 42    # x2  = 42
@@ -133,8 +152,6 @@ module core_riscv_tb();
         imem['h0AC >> 2] = 32'h4048DB93; // srai  x23, x17, 4   # x23 = 0xFFFFFFFF
         imem['h0B0 >> 2] = 32'h01103C33; // sltu  x24, x0, x17  # x24 = 1
         imem['h0B4 >> 2] = 32'h0008ACB3; // slt   x25, x17, x0  # x25 = 1
-        // dirty-eviction stress: 0x064 / 0x864 / 0x1064 all map to set 6;
-        // the third allocation evicts the dirty 0x060 line (WRITEBACK path)
         imem['h0B8 >> 2] = 32'h00100D13; // addi  x26, x0, 1    # x26 = 1
         imem['h0BC >> 2] = 32'h00BD1D13; // slli  x26, x26, 11  # x26 = 0x800
         imem['h0C0 >> 2] = 32'h01A08E33; // add   x28, x1, x26  # x28 = 0x864
@@ -150,14 +167,17 @@ module core_riscv_tb();
     assign imem_rdata = (imem_index < IMEM_WORDS) ? imem[imem_index[$clog2(IMEM_WORDS)-1:0]]
                                                   : 32'h00000013;
 
-    always_ff @(posedge clk)
-        imem_ready_r <= imem_req;
-
-    assign imem_ready = imem_ready_r;
-
+    int imem_cnt;
+    logic imem_ready_c;
+    assign imem_ready_c = imem_req && (imem_cnt == MEM_LATENCY-1);
+    always_ff @(posedge clk) begin
+        if (!imem_req)          imem_cnt <= 0;
+        else if (imem_ready_c)  imem_cnt <= 0;   // delivered a word, restart
+        else                    imem_cnt <= imem_cnt + 1;
+    end
+    assign imem_ready = imem_ready_c;
 
     logic [31:0] dmem [0:DMEM_WORDS-1];
-    logic        dmem_ready_r;
 
     initial begin
         for (int i = 0; i < DMEM_WORDS; i++)
@@ -166,13 +186,18 @@ module core_riscv_tb();
 
     assign dmem_rdata = dmem[dmem_addr[$clog2(DMEM_WORDS)+1:2]];
 
+    int dmem_cnt;
+    logic dmem_ready_c;
+    assign dmem_ready_c = (dmem_rd_en || dmem_wr_en) && (dmem_cnt == MEM_LATENCY-1);
     always_ff @(posedge clk) begin
-        dmem_ready_r <= dmem_rd_en || dmem_wr_en;
-        if (dmem_wr_en)
+        if (!(dmem_rd_en || dmem_wr_en)) dmem_cnt <= 0;
+        else if (dmem_ready_c)           dmem_cnt <= 0;
+        else                             dmem_cnt <= dmem_cnt + 1;
+        if (dmem_wr_en && dmem_ready_c)
             dmem[dmem_addr[$clog2(DMEM_WORDS)+1:2]] <= dmem_wdata;
     end
 
-    assign dmem_ready = dmem_ready_r;
+    assign dmem_ready = dmem_ready_c;
 
     function automatic [31:0] read_reg(input int unsigned n);
         read_reg = dut.rf.mem[n];
@@ -180,6 +205,25 @@ module core_riscv_tb();
 
     int pass_count;
     int fail_count;
+
+    // ipc instrumentation
+    longint cycle_count;
+    longint retire_count;
+    logic   counting;
+    always_ff @(posedge clk) begin
+        if (!rst_n) begin
+            cycle_count  <= 0;
+            retire_count <= 0;
+            counting     <= 1'b0;
+        end else begin
+            if (cpu_enable && !debug_halted) begin
+                counting     <= 1'b1;
+                cycle_count  <= cycle_count + 1;
+                if (dut.wb_valid && !dut.memwb_stall)
+                    retire_count <= retire_count + 1;
+            end
+        end
+    end
 
     task automatic check_reg(
         input int unsigned reg_num,
@@ -254,9 +298,6 @@ module core_riscv_tb();
         end
     endtask
 
-    // ------------------------------------------------------------------
-    // main sequence
-    // ------------------------------------------------------------------
     initial begin
         rst_n      = 1'b0;
         cpu_enable = 1'b0;
@@ -276,7 +317,7 @@ module core_riscv_tb();
                 $display("[TB] EBREAK retired, core halted at T=%0t", $time);
             end
             begin : hard_cap
-                repeat (2000) @(posedge clk);
+                repeat (60000) @(posedge clk);
             end
         join_any
         disable fork;
@@ -302,6 +343,8 @@ module core_riscv_tb();
             check_dmem(32'h00000408, 32'hA0, "writeback 0x408");
             check_dmem(32'h00000C08, 32'hA1, "writeback 0xC08");
             check_dmem(32'h00001408, 32'hA2, "writeback 0x1408");
+        end else if (prog == 3) begin
+            check_reg(1, 32'd350, "hot-loop sum x1=350");
         end else begin
         // arithmetic + forwarding + load-use
         check_reg( 1, 32'd100,        "addi x1=100");
@@ -354,6 +397,11 @@ module core_riscv_tb();
         check_dmem(32'h00000864, 32'd42,          "writeback mem[0x864]");
         end
 
+        $display("\n========== IPC ==========");
+        $display("prog=%0d  mem_latency=%0d  cycles=%0d  retired=%0d  IPC=%0.4f",
+                 prog, MEM_LATENCY, cycle_count, retire_count,
+                 real'(retire_count) / real'(cycle_count));
+
         $display("\n========== SUMMARY ==========");
         $display("PASS: %0d   FAIL: %0d   TOTAL: %0d", pass_count, fail_count, pass_count + fail_count);
         if (fail_count == 0)
@@ -365,8 +413,8 @@ module core_riscv_tb();
 
     // timeout watchdog
     initial begin
-        #100000;
-        $display("[TIMEOUT] Simulation exceeded 100us -- possible hang");
+        #5000000;
+        $display("[TIMEOUT] Simulation exceeded 5ms -- possible hang");
         $fatal;
     end
 

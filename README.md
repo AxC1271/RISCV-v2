@@ -13,8 +13,7 @@ from source to FPGA bitstream, not just a working datapath.
 ## Key Features
 
 - **ISA**: RV32I base integer instruction set
-- **Pipeline**: 5-stage (IF / ID / EX / MEM / WB), fully rebuilt from scratch after tracing a
-  phantom re-execution bug to an implicit 6th stage in an earlier version
+- **Pipeline**: 5-stage (IF / ID / EX / MEM / WB)
 - **Hazard handling**: dedicated hazard detection unit covering fetch stalls, load-use stalls, and
   D-cache miss stalls as a totally ordered freeze-set chain, plus forwarding to minimize stall
   cycles
@@ -28,8 +27,7 @@ from source to FPGA bitstream, not just a working datapath.
   — see [Verification](#verification) below
 - **Toolchain**: bare-metal C firmware with volatile-typed MMIO, custom linker script and startup
   assembly (`bare_metal/`), targeting this core directly rather than staying in simulation-only
-- **Timing analysis**: static timing analysis in progress for both the CPU core and the AXI-Lite
-  interconnect (`sta_cpu/`, `sta_axi/`)
+- **Timing analysis**: static timing analysis in progress for the CPU core (`timing_analysis`)
 
 ---
 

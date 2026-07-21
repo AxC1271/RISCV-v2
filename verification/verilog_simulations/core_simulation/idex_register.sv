@@ -23,6 +23,7 @@ module idex_register (
     input  logic       id_jump,
     input  logic       id_jalr,
     input  logic       id_ebreak,
+    input  logic       id_valid,
 
     output logic[31:0] ex_pc,
     output logic[31:0] ex_instr,
@@ -42,7 +43,8 @@ module idex_register (
     output logic       ex_branch,
     output logic       ex_jump,
     output logic       ex_jalr,
-    output logic       ex_ebreak
+    output logic       ex_ebreak,
+    output logic       ex_valid
 );
 
     always_ff @(posedge clk) begin
@@ -66,6 +68,7 @@ module idex_register (
             ex_jump       <= 1'b0;
             ex_jalr       <= 1'b0;
             ex_ebreak     <= 1'b0;
+            ex_valid      <= 1'b0;
         end else if (stall) begin
             // hold
         end else begin
@@ -88,6 +91,7 @@ module idex_register (
             ex_jump       <= id_jump;
             ex_jalr       <= id_jalr;
             ex_ebreak     <= id_ebreak;
+            ex_valid      <= id_valid;
         end
     end
 

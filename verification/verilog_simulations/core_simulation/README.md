@@ -1,164 +1,153 @@
-# RISC-V Core
+# RISC-V Core (v2) — Pipelined RV32I Simulation
 
 ## Purpose
 
-This is a 5-stage pipelined RV32I core (IF → ID → EX → MEM → WB) written in SystemVerilog, with:
+A 5-stage pipelined RV32I core (IF → ID → EX → MEM → WB) in SystemVerilog:
 
 * Program Counter
 * Register File (write-first bypass)
 * Immediate Generator
 * Control Unit (full RV32I decode, including LUI/AUIPC)
 * Arithmetic Logic Unit
-* Split L1 Instruction/Data Caches (inside the core)
+* Split L1 Instruction/Data Caches
 * Hazard Unit + Forward Unit
 * Branch Unit
 * Pipeline Registers
 
-The overall scope of this project is a single-core processor that can interact with peripherals and run real firmware — compiled C linked at the reset vector, using `la`/`li`/`call` pseudo-instructions. That's why every RV32I instruction is supported: AUIPC because `la` expands to `auipc + addi`, sub-word loads/stores because gcc emits them for `char`/`short`, and EBREAK wired to a halt flag so simulations end deterministically instead of on a cycle count.
+The goal is a single core that runs real firmware — C compiled and linked at the reset vector, using `la`/`li`/`call`. That's why I implemented all of RV32I and not just a demo subset: `la` expands to `auipc + addi`, gcc emits sub-word loads/stores for `char`/`short`, and I wired EBREAK to a halt flag so a sim ends when the program says it's done instead of on some cycle count I picked.
 
-### Architecture decisions worth knowing before reading the RTL
+> **Heads up on the caches:** they're in this simulation core and fully tested, but I left them **out of the synthesizable hardware build** on purpose. The reasoning and the data behind it are in [The cache decision](#the-cache-decision) below. Short version: at the memory speed my real hardware runs, the cache doesn't buy any throughput, and it's my worst timing path — so it stays a sim/verification piece, not silicon.
 
-**Jumps are fully consumed in EX.** The link value (`pc+4`) is muxed into the result before EX/MEM, and the redirect + flush happen the same cycle. No jump signal travels past EX — an instruction downstream of EX is just "a value heading to a register."
+### Design decisions worth knowing before reading the RTL
 
-**Both caches have combinational hit paths.** Hits are zero-wait; the FSM only runs on a miss (writeback → allocate → back to IDLE), after which the held request replays as an ordinary hit. This buys two things: no merge-during-allocate logic in the D-cache, and no in-flight fetch to squash on a redirect — instruction data is only ever consumed against the *current* PC, so a redirect during a wrong-path refill needs zero special handling.
+**Jumps are done by the end of EX.** The link value (`pc+4`) gets muxed into the result before EX/MEM, and the redirect + flush happen in the same cycle. Nothing about "this was a jump" travels past EX — downstream it's just a value on its way to a register. Simpler than carrying jump signals the whole way down.
 
-**Three stall domains, one owner.** All pipeline control lives in `hazard_unit`, priority-encoded:
+**Cache hits are combinational (zero wait).** The cache FSM only runs on a miss (writeback → allocate → back to idle); a hit comes straight out. One nice side effect: there's no in-flight fetch to squash when a branch redirects, because instruction data is only ever used against the *current* PC. That killed a whole class of squash logic I'd otherwise need.
 
-| Domain | Cause | Behavior |
+**All stall logic lives in one place (`hazard_unit`).** Three cases, priority-ordered:
+
+| Stall | Cause | What happens |
 |---|---|---|
-| `mem_stall` | D-cache miss | freeze the entire pipeline |
-| `load_use_stall` | load in EX, consumer in ID | freeze PC + IF/ID, bubble into EX |
+| `mem_stall` | D-cache miss | freeze the whole pipeline |
+| `load_use_stall` | load in EX, next instr needs it | freeze PC + IF/ID, bubble into EX |
 | `fetch_stall` | I-cache miss | freeze PC, bubble into ID |
 
-The invariant that matters: EX/MEM and MEM/WB only ever freeze on the global stall. Stalling the back half of the pipeline while the front half advances is exactly how instructions execute twice (the phantom re-execution bug from v1).
+The rule I care about: EX/MEM and MEM/WB only freeze on the full-pipeline stall. If you freeze the back half while the front half keeps moving, instructions run twice — that was the phantom re-execution bug in v1, and centralizing the control here is how I made sure it can't happen again.
 
-**Sub-word accesses are handled in the core, not the cache.** Loads read the aligned word and extract + extend in MEM; stores replicate byte lanes and drive a 4-bit `wstrb` into the D-cache. The cache's memory side stays word-based.
+**Sub-word loads/stores are handled in the core, not the cache.** Loads read the aligned word and do the byte/half extract + sign-extend in MEM; stores replicate the byte into the right lanes and drive a 4-bit `wstrb`. The cache itself stays word-based, which keeps it simple.
 
 ---
 
-## What I tested, exactly
+## What I tested
 
-One linear 37-instruction program (encodings generated by `riscv_asm.py`, checked into the repo) that ends on EBREAK. It covers, in order:
+Self-checking testbench in Icarus Verilog. Three programs, picked with `+prog=N`:
 
-1. **Forwarding** — an `add` whose operands come from EX→EX and MEM→EX paths.
-2. **Load-use** — `lw x4` immediately consumed by `add x5, x4, x4`; must produce exactly one bubble and the fresh value.
-3. **LUI / AUIPC** — `lui x6, 0x12345` and `auipc x7, 0`, checked against the absolute link address (`BASE + 0x1C`), which is what firmware `la` correctness depends on.
-4. **JAL** — link register = `pc+4`, the two wrong-path instructions squashed (their destination registers must still be 0), execution resumes at the target.
-5. **JALR** — target computed as `(rs1 + imm) & ~1` through the ALU from an AUIPC-produced base, link register checked. This is the `call`/`ret` pattern.
-6. **Branches** — one taken `beq` (2 squashed slots verified) and one not-taken `bne` (fall-through instruction executes).
-7. **Sub-word memory** — two `sb`s into different byte lanes of the same word, then `lbu`/`lb`/`lh` verifying zero- vs sign-extension against that mixed word, an `sh` into the upper half, then `lw`/`lhu` verifying the final composite `0xFFFF05FF`.
-8. **Shifts/compares** — `srai` on a negative value (the formal-safe invert-shift-invert path), `slt`/`sltu` signed-vs-unsigned disagreement.
-9. **Halt** — EBREAK retires through WB and latches `debug_halted`; the testbench ends on that flag, not a cycle budget.
-10. **Cache state** — final memory contents checked *inside* the D-cache (tag/valid/data arrays via hierarchical peek), which exercises hit, miss-allocate, and the dirty path end to end. I-cache refills show up as `fetch_stall` in the monitor every time execution crosses a 16-byte line.
+**`prog=1` — the correctness run (32 checks).** One straight-line program that ends on EBREAK and hits everything: EX→EX and MEM→EX forwarding; a load-use pair (should be exactly one bubble); LUI/AUIPC checked against absolute addresses (this is what makes firmware `la` work); JAL link + two squashed instructions; JALR target `(rs1+imm)&~1` off an AUIPC base; a taken `beq` and a not-taken `bne`; the full sub-word set (two `sb`s into different byte lanes, then `lbu`/`lb`/`lh`/`sh`/`lw`/`lhu` against the mixed word `0xFFFF05FF`); `srai` on a negative number; `slt`/`sltu`; then final memory contents read straight out of the cache and backing memory.
 
-## How I tested it
+**`prog=2` — forwarding + dirty-eviction stress (15 checks).** Store→load back-to-back, load-use feeding store data, and a loop with a 0x800 stride that lands on the same cache set every time so it's forced to evict dirty lines. The evicted data gets checked in backing memory to prove the writeback path actually ran.
 
-Self-checking testbench under Icarus Verilog (`-g2012`). Register results are read hierarchically from `dut.rf.mem`, memory results from the D-cache arrays. Memory models present read data combinationally with a registered ready, matching the cache handshake.
+**`prog=3` — cache-friendly hot loop (1 check).** A tight loop hammering one word that stays in the cache — one miss up front, then all hits. This one exists just for the IPC sweep.
+
+## How I ran it
 
 ```
 iverilog -g2012 -o riscv_sim *.sv
-vvp riscv_sim              # self-checking run
-vvp riscv_sim +verbose     # + per-cycle pipeline monitor
+vvp riscv_sim +prog=1               # correctness
+vvp riscv_sim +prog=1 +verbose      # + per-cycle pipeline monitor
+vvp riscv_sim +prog=2               # eviction stress
+vvp riscv_sim +prog=3 +lat=10       # hot loop, memory latency = 10 cycles
 ```
 
-Terminal output (Icarus Verilog):
+Register values are read out of `dut.rf.mem` and memory out of the cache arrays. All three pass (32 / 15 / 1).
 
-```
-[TB] CPU running...
-[TB] EBREAK retired, core halted at T=1025000
-  PASS  addi x1=100            x1                    = 0x00000064
-  PASS  addi x2=42             x2                    = 0x0000002a
-  PASS  add fwd x3=142         x3                    = 0x0000008e
-  ...
-  PASS  sw -> mem[100]         dcache[0x00000064] = 0x0000002a
-  PASS  sb/sh -> mem[104]      dcache[0x00000068] = 0xffff05ff
+One thing I want to flag: passing register values only tell you the *answer* was right, not that the pipeline got there the right way. So I also watched the `+verbose` monitor and checked the mechanics by hand:
 
-========== SUMMARY ==========
-PASS: 27   FAIL: 0   TOTAL: 27
-ALL TESTS PASSED
-```
-
-Passing register values only prove the *destination* is right — they don't prove the pipeline got there legally. So on top of the self-checks I spot-verified the mechanism in the `+verbose` monitor:
-
-* every `redir=1` cycle is followed by exactly two bubble slots entering EX (2-cycle penalty, both wrong-path instructions killed),
-* every `lu=1` cycle holds IF/ID for exactly one cycle and injects exactly one bubble,
-* no destination register appears twice consecutively in WB with `rw=1` (no double retire).
+* every redirect is followed by exactly two killed slots (the 2-cycle branch penalty),
+* every load-use stall is exactly one bubble,
+* nothing retires twice.
 
 ---
 
 ## Measuring IPC
 
-Two counters: cycles elapsed and instructions retired. The subtlety is that "retired" must not count bubbles, and bubbles are architecturally identical to NOPs — so the honest way is a `valid` bit that travels down the pipeline. It's set when IF/ID latches a real fetch, cleared by every flush/bubble, and never invented downstream:
+Instructions per cycle = retired instructions ÷ total cycles. Sounds simple, but there's a catch: the pipeline is full of **bubbles** — empty slots inserted whenever it stalls or flushes — and a bubble looks identical to a real "do nothing" NOP. If I count those as retired instructions, my IPC is wrong.
+
+So I tag every real instruction with a 1-bit `valid` flag when it's fetched, carry that flag down all five stages next to the instruction, and force it to 0 whenever a bubble gets made. At the end I only count the ones still flagged.
 
 ```systemverilog
-// tb-side counters (valid bit plumbed through the pipeline registers)
-int unsigned cycle_count, retire_count;
+// set when a real instruction is fetched...
+assign if_valid = run && icache_ready;
+// ...carried through ifid -> idex -> exmem -> memwb; each register
+// zeroes valid on flush/reset (bubble = valid 0) and holds it on stall.
+```
 
-always_ff @(posedge clk) begin
-    if (rst_n && cpu_enable && !debug_halted) begin
-        cycle_count <= cycle_count + 1;
-        if (dut.wb_valid)
-            retire_count <= retire_count + 1;
-    end
+```systemverilog
+if (cpu_enable && !debug_halted) begin
+    cycle_count <= cycle_count + 1;
+    // the !memwb_stall check matters: during a full freeze the WB
+    // instruction just sits there, and counting wb_valid on its own
+    // would re-count it every frozen cycle.
+    if (dut.wb_valid && !dut.memwb_stall)
+        retire_count <= retire_count + 1;
 end
-
-// at halt:
 // IPC = real'(retire_count) / real'(cycle_count)
 ```
 
-Counting starts when `cpu_enable` rises and stops the cycle `debug_halted` latches, so cold-start reset cycles don't dilute the number. Report both the cold number (includes compulsory cache misses) and a warm number (run the loop twice, measure the second pass) — the gap between them is the memory system's contribution.
+Counting starts when the CPU is enabled and stops the cycle it halts, so reset doesn't pollute the number.
 
-Predicted IPC is worth writing down before measuring, because a mismatch means a bug. For the mixed loop workload below (7 instructions per iteration): each iteration pays 1 load-use bubble (`lw x6` → `addi x6`) and, while the branch is taken, a 2-cycle redirect penalty. So warm steady-state should approach 7 / (7 + 1 + 2) ≈ **0.70 IPC**, rising toward 1.0 on straight-line forwarded code (the RAW test should measure exactly 1.0 warm — any less means the forwarding paths aren't covering something).
+### The memory-latency knob
 
-```s
-# Mixed workload for IPC measurement
-    addi  x1, x0, 0       # loop counter i = 0
-    addi  x2, x0, 8       # loop bound = 8
-    addi  x3, x0, 200     # base address for array
+My test memory used to always answer in one cycle. I added a `+lat=N` setting that makes it wait N cycles before answering, so I can pretend memory is slow and see how the core copes. The important part: **cache hits still answer instantly** — only misses wait — so this knob is exactly what shows whether the cache is pulling its weight.
 
-loop:
-    slli  x4, x1, 2       # x4 = i * 4
-    add   x5, x3, x4      # x5 = base + offset
-    lw    x6, 0(x5)       # x6 = array[i]
-    addi  x6, x6, 1       # x6++            LOAD-USE stall
-    sw    x6, 0(x5)       # array[i] = x6
-    addi  x1, x1, 1       # i++
-    blt   x1, x2, loop    # taken 7/8 times -> 2-cycle penalty
+### What I measured
 
-    lw    x7, 0(x3)
-    lw    x8, 4(x3)
-    add   x9, x7, x8      # x9 = array[0] + array[1]
-```
+| program | reuse | IPC @lat=1 | @lat=5 | @lat=10 | @lat=20 | got worse by |
+|---|---|---|---|---|---|---|
+| `prog=2` (thrash) | none | 0.331 | 0.116 | 0.064 | 0.034 | **9.8×** |
+| `prog=3` (hot loop) | high | 0.544 | 0.465 | 0.394 | 0.302 | **1.8×** |
 
-The comparison against v1 is throughput, not IPC: a single-cycle core is IPC 1.0 by construction but its clock period is the *entire* datapath. Effective throughput = f_max × IPC, which is where the STA below comes in.
+The last column is the interesting one — it's how much IPC dropped going from fast memory (lat=1) to slow memory (lat=20), i.e. first number ÷ last number.
+
+The thrash program has no data reuse, so almost every access misses and eats the full memory latency. Make memory 20× slower and it runs ~9.8× worse — basically what a cacheless design would do. The hot loop reuses the same word every iteration, so after the first miss it never touches memory again; the same 20× slowdown only costs it 1.8×. That gap between 1.8 and 9.8 is the cache earning its keep — but only because the hot loop actually reuses data. No reuse, no benefit.
+
+Worth being honest about the absolute numbers: these are short programs (37–206 instructions), so IPC is dragged down by pipeline fill and small loop counts. The *shape* across the sweep is what I trust, not the exact value. A 1000-iteration loop would give a cleaner steady-state number.
+
+---
+
+## The cache decision
+
+The caches are the biggest piece of verification work in this core — three stall cases, load-use hazards, the miss FSMs, the dirty-eviction writeback path. That's the part I'm proud of, and it's the warm-up for the memory-ordering work I actually want to do. But once the goal changed from *"show the pipeline works"* to *"close timing on real hardware,"* the caches stopped being worth it, and the IPC sweep is why.
+
+Look at the **lat=1** column — that's my real target, on-chip memory that answers in one cycle. Even the cache-friendly hot loop only hits **0.544 IPC**, and that ceiling isn't memory's fault — it's the load-use stall and the branch penalty in the loop. When memory is already single-cycle there are no misses to hide, so a cacheless core hits the same 0.544. The cache only helps when memory is slow *and* the program reuses data, and my hardware is neither.
+
+On top of that, the cache costs me on timing. Post-synthesis STA against Sky130 (see [`../timing_analysis/`](../timing_analysis/)) put my worst path straight through the D-cache read logic — one gate driving a **1,949-fanout** net into the array read muxes. So it's not just neutral, it's my critical path.
+
+Put together:
+
+* **Timing:** the cache owns my critical path.
+* **IPC at single-cycle memory:** no gain — a cacheless core matches it.
+
+Something that's my worst timing path *and* buys me nothing at the speed I actually run is the easiest thing to cut. So the caches come out of the hardware build and the core becomes tightly-coupled memory, like a normal bare-metal MCU. They stay here in sim as the verification piece and the timing case study. I didn't cut them on a hunch — I built them, measured both sides, and the numbers said to.
 
 ---
 
 ## Static Timing Analysis
 
-Deferred until the AXI-Lite peripheral bus is in and the core RTL is stable. Recall:
+Full writeup in [`../timing_analysis/README.md`](../timing_analysis/). The short version of the first Sky130 run: WNS came back at −53.9 ns (~13 MHz), which is obviously not the real speed — it's a tooling artifact. One gate ate 57.7 of the 71.9 ns because it was driving ~1,949 loads (the D-cache read net above) with no buffering. Bare Yosys+ABC doesn't insert buffer trees; a real place-and-route flow does. FPGAs never show this because their routing is buffered everywhere — which is itself a real difference between the two flows, not just a different number. Hold passed fine (+0.42 ns). The honest speed number comes after place-and-route, with buffering and real wire delays.
 
-Setup condition:
+The conditions I'm sweeping against:
 
-$$
-t_{clk} + t_{skew} \geq T_{cq} + T_{comb} + T_{setup}
-$$
+$$t_{clk} + t_{skew} \geq T_{cq} + T_{comb} + T_{setup} \qquad t_{cq} + t_{comb} \geq t_{hold} + t_{skew}$$
 
-Hold condition:
+The number that actually matters for comparing designs is **effective throughput = f_max × IPC**. A single-cycle core is IPC 1.0 by definition but its clock has to cover the entire datapath. Computing that product for both the cached and cacheless cores, on FPGA and Sky130, is what this whole project is building toward.
 
-$$
-t_{cq} + t_{comb} \geq t_{hold} + t_{skew}
-$$
+## Known limitations (on purpose)
 
-The plan is to sweep the clock constraint until negative setup slack appears and record f_max, then compute effective throughput (f_max × measured IPC) against v1. Two paths I expect to fight for critical: the EX forwarding mux → ALU → JALR target → PC redirect path, and the combinational D-cache hit path (tag compare → way select → load extension). The comb-read cache arrays are a deliberate trade — fine for FF-based arrays on FPGA/Sky130, worth revisiting if this ever maps to true SRAM macros.
-
-## Known limitations (deliberate)
-
-* Misaligned loads/stores unsupported — no trap machinery in base RV32I, and gcc with `-march=rv32i` won't emit them.
-* ECALL decodes as a NOP until Zicsr + trap handling exist.
-* Caches are blocking, one outstanding miss.
+* No misaligned loads/stores — base RV32I has no trap machinery, and gcc with `-march=rv32i` won't emit them anyway.
+* ECALL is a NOP until I add CSRs + trap handling.
+* Caches are blocking, one miss at a time.
 
 ## References
 
 * *The RISC-V Instruction Set Manual, Volume I: Unprivileged ISA*
-* Patterson & Hennessy, *Computer Organization and Design, RISC-V Edition* — hazard/forwarding structure
+* Patterson & Hennessy, *Computer Organization and Design, RISC-V Edition* — for the hazard/forwarding structure
