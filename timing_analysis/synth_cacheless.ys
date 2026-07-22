@@ -1,7 +1,5 @@
-read_verilog -sv core_riscv.sv
+read_verilog -sv core_riscv_cacheless.sv
 read_verilog -sv program_counter.sv
-read_verilog -sv instr_cache.sv
-read_verilog -sv data_cache.sv
 read_verilog -sv ifid_register.sv
 read_verilog -sv idex_register.sv
 read_verilog -sv exmem_register.sv
@@ -14,17 +12,12 @@ read_verilog -sv branch_unit.sv
 read_verilog -sv forward_unit.sv
 read_verilog -sv hazard_unit.sv
 
-chparam -set NUM_SETS 32 instr_cache
-chparam -set CACHE_SIZE 1024 data_cache
-
-hierarchy -check -top core_riscv
-synth -top core_riscv
+hierarchy -check -top core_riscv_cacheless
+synth -top core_riscv_cacheless
 flatten
 opt_clean
-
 dfflibmap -liberty sky130_fd_sc_hd__tt_025C_1v80.lib
 abc -liberty sky130_fd_sc_hd__tt_025C_1v80.lib -D 20000
 opt_clean -purge
-
-tee -o synth_stats.txt stat -liberty sky130_fd_sc_hd__tt_025C_1v80.lib
-write_verilog -noattr -noexpr core_riscv_synth.v
+tee -o synth_stats_cacheless.txt stat -liberty sky130_fd_sc_hd__tt_025C_1v80.lib
+write_verilog -noattr -noexpr core_riscv_cacheless_synth.v
