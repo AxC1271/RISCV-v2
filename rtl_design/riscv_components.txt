@@ -1,0 +1,14 @@
+alu.sv 
+branch_unit.sv
+control_unit.sv 
+forward_unit.sv 
+hazard_unit.sv 
+immediate_generator.sv 
+exmem_register.sv 
+idex_register.sv 
+ifid_register.sv 
+memwb_register.sv 
+program_counter.sv 
+register_file.sv 
+core_riscv.sv 
+core_riscv_tb.sv
