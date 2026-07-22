@@ -19,9 +19,8 @@ from source to FPGA bitstream, not just a working datapath.
   cycles
 - **Memory hierarchy**: direct-mapped I-cache (writeback, sequential access pattern), 2-way
   set-associative D-cache with LRU replacement
-- **Peripherals** *(in progress)*: AXI-Lite interconnect with master/slave wrappers currently being
-  written; UART + SPI planned (I2C dropped after concluding its protocol semantics don't map
-  cleanly onto tractable Verilog for this design)
+- **Peripherals** *(in progress)*: Wishbone interconnect with master/slave wrappers currently being
+  written; bootloader, UART GPIO, SPI GPIO, timer peripheral, and RAM
 - **Verified two ways**: formal verification (SymbiYosys/BMC) for individual modules with large,
   provable input spaces; Icarus-based simulation for full-CPU, multi-cycle, program-level behavior
   — see [Verification](#verification) below
@@ -75,16 +74,6 @@ for instructions and data.
 
 ## Design Process
 
-### Peripherals + Memory Mapped I/O
-
-To make the core more interesting, I want to add the possibility of writing instructions serially
-to it via UART, and to make the PMOD ports usable for interfacing with external devices. Currently
-building the AXI-Lite bus itself (master/slave wrappers) as the foundation this will sit on. Once
-that's in place, the plan is UART + SPI peripherals — I initially considered I2C as well, but
-dropped it after concluding its protocol semantics (clock stretching, multi-master arbitration)
-don't map cleanly onto tractable Verilog for the scope of this project. No UART bootloader yet;
-that's downstream of the AXI-Lite work.
-
 ### Cache Architecture
 
 For the I-cache and D-cache in this processor, I implemented a direct-mapped cache with a writeback
@@ -136,14 +125,12 @@ results.
 - [x] 5-stage pipeline, hazard detection, forwarding
 - [x] Split L1 I/D caches (direct-mapped I, 2-way set-associative D)
 - [x] Bare-metal C toolchain (linker script, startup assembly, MMIO)
-- [x] Formal verification of individual modules (ALU complete; AXI-Lite wrappers in progress)
-- [ ] AXI-Lite interconnect (master/slave wrappers) — in progress
+- [x] Formal verification of individual modules (ALU complete)
+- [ ] Wishbone interconnect (master/slave wrappers) — in progress
 - [ ] UART + SPI peripherals
 - [ ] UART bootloader
 - [ ] Static timing analysis (CPU + AXI-Lite)
 - [ ] IPC / performance characterization on real workloads
-- [ ] v3: out-of-order execution — research-depth follow-up exploring memory disambiguation and
-      microarchitectural side-channel questions in the load/store queue
 
 ---
 
