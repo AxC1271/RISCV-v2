@@ -63,7 +63,6 @@ performance through multi-stage pipelining, forwarding/branch units, and (in the
 For the I-cache and D-cache in this processor, I implemented a direct-mapped I-cache given its sequential access pattern, and a 2-way set-associative D-cache with an LRU replacement policy.
 
 **Simulation vs. hardware — why the caches aren't synthesized.** I built both caches specifically to understand how a memory hierarchy interacts with the pipeline: the miss stalls, the writeback and eviction paths, how a D-cache miss freezes the whole pipeline. 
-
 That's genuinely the point of having them here; it's an exercise in the mechanics of a real memory hierarchy.
 
 But taking the design through synthesis made the tradeoff clear: the **D-cache was the critical path.** Its read logic drove a ~1,900-fanout net that dominated timing, and Sky130 static timing traced a −54 ns setup violation straight to it. On top of that, a cache only pays off by hiding *slow* memory — my backing memory is on-chip and single-cycle, so there was nothing to hide. IPC measurements across a memory-latency sweep confirmed it: at single-cycle latency the cacheless core is actually *faster*, because the cache still pays refill overhead with no reuse to amortize.
@@ -100,9 +99,7 @@ Two complementary strategies, not one:
   documented case study of distinguishing a real RTL bug from a Yosys tooling artifact); the
   Wishbone bus wrappers are in progress alongside the interconnect itself.
 - **[`verification/verilog_simulations/`](verification/verilog_simulations/README.md)** —
-  Icarus Verilog testbenches for full-CPU, multi-cycle, program-level behavior that formal doesn't
-  cover well (running real RISC-V programs, checking pipeline behavior over hundreds of cycles).
-  This is also where the IPC instrumentation and the cache-vs-cacheless comparison live.
+  Icarus Verilog testbenches for full-CPU, multi-cycle, program-level behavior that formal doesn't cover well (running real RISC-V programs, checking pipeline behavior over hundreds of cycles). This is also where the IPC instrumentation and the cache-vs-cacheless comparison live.
 
 Each folder's README explains why that approach was chosen for that scope, and how to reproduce the
 results.
