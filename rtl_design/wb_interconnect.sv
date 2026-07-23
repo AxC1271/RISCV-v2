@@ -12,8 +12,8 @@ module wb_interconnect (
     // connects the cpu to four peripherals:
     // ram, gpio, uart, and a timer, 5th
     // bit is added for invalid addresses
-    output logic [4:0] slve_sel, // one hot encoded
-    
+    output logic [4:0]  slve_sel, // one hot encoded
+
 );
 
 // how I'm doing naming conventions

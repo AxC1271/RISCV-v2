@@ -1,5 +1,5 @@
 module program_counter # (
-    parameter logic [31:0] RESET_VECTOR = 32'h0001_0000
+    parameter logic [31:0] RESET_VECTOR = 32'h0000_0000
 )(
     input  logic clk,
     input  logic rst_n,
