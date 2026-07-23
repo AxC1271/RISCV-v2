@@ -1,6 +1,4 @@
 module wb_master (
-    input  logic clk,
-    input  logic rst_n,
     // cpu interface
     input  logic [31:0] dmem_addr,
     input  logic [31:0] dmem_wdata,
@@ -31,7 +29,4 @@ module wb_master (
     // let's assign the signals from the CPU side
     assign dmem_rdata = wb_dat_r;
     assign dmem_ready = wb_ack;
-
-    always_ff @(posedge clk) begin
-    end
 endmodule
