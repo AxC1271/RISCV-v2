@@ -1,8 +1,0 @@
-# running in control_unit/src/
-read_verilog -sv control_unit.sv
-prep -top control_unit
-
-hierarchy -smtcheck
-rename -witness
-write_jny -no-connections ../model/design.json
-write_rtlil ../model/design.il

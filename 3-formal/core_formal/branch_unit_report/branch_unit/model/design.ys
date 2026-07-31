@@ -1,8 +1,0 @@
-# running in branch_unit/src/
-read_verilog -sv branch_unit.sv
-prep -top branch_unit
-
-hierarchy -smtcheck
-rename -witness
-write_jny -no-connections ../model/design.json
-write_rtlil ../model/design.il

@@ -43,7 +43,7 @@ cp "$(find ~/.volare -name 'sky130_fd_sc_hd__tt_025C_1v80.lib' | head -1)" .
 ## Synthesis + STA flow
 
 Both designs use the same flow, just different top modules. Synthesis reads the RTL from
-`../rtl_design/` so there's no second copy to drift.
+`../1-rtl/` so there's no second copy to drift.
 
 ```bash
 yosys -s synth_cacheless.ys      # -> core_riscv_cacheless_synth.v

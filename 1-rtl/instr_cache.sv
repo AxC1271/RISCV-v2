@@ -1,4 +1,4 @@
-// direct-mapped I-cache with a combinational hit path
+ // direct-mapped I-cache with a combinational hit path
 module instr_cache #(
     parameter NUM_SETS       = 64,
     parameter WORDS_PER_LINE = 4,
