@@ -18,15 +18,13 @@ module wb_master (
     input  logic        wb_ack    // acknowledge
 );
 
-    // let's just do the easy assigns first on the wishbone side
+    // translate CPU wires to Wishbone specs
     assign wb_cycle = (dmem_rd_en || dmem_wr_en);
     assign wb_strb  = (dmem_rd_en || dmem_wr_en);
     assign wb_addr  = dmem_addr;
     assign wb_dat_w = dmem_wdata;
     assign wb_sel   = dmem_wstrb;
     assign wb_we    = dmem_wr_en;
-
-    // let's assign the signals from the CPU side
     assign dmem_rdata = wb_dat_r;
     assign dmem_ready = wb_ack;
 endmodule
