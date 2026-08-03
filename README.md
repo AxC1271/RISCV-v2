@@ -23,36 +23,20 @@ Successor to a single-cycle v1 core built during last year; this iteration explo
 
 ```
 RISCV-v2/
-├── bare_metal/                    # bare-metal C firmware, assembly, linker scripts
-├── images/                        # diagrams referenced in this README
-├── python_scripts/
-│   ├── riscv_asm.py               # assembler: RISC-V instructions -> binaries for testbenching
-│   └── firmware.py                # what I plan on using for transmitting code serially
-├── rtl_design/                    # raw Verilog without the SVAs / testbench infrastructure
-├── timing_analysis/               # static timing analysis through Xilinx and Sky130nm
-├── verification/
-│   ├── formal_verification/       # SymbiYosys/BMC proofs for individual modules (start here: core_formal/alu)
-│   └── verilog_simulations/       # full-CPU RTL source + Icarus testbenches
-├── constraints.xdc                # synthesis timing constraints
-└── README.md                      # project summary + overview
+├── 0-firmware/ # bare-metal C runtime, startup assembly, linker script
+├── 1-rtl/ # SystemVerilog source (no testbenches)
+├── 2-sim/ # Icarus testbenches, full-CPU simulation, IPC analysis
+├── 3-formal/ # SymbiYosys/BMC proofs for individual modules
+├── 4-sta/ # Yosys synthesis + OpenSTA timing analysis
+├── 5-python/ # utilities: assembler, serial firmware loader
+├── 6-images/ # diagrams and figures referenced in docs
+├── constraints.xdc # FPGA synthesis timing constraints
+└── README.md # this file
 ```
 
 ---
 
-## Overview
-
-### Harvard Architecture
-
-<p align="center">
-    <img src="./images/riscv-architecture.png" />
-</p>
-
-*Credit: Patterson & Hennessy, [Computer Organization and Design: RISC-V Edition](https://www.elsevier.com/books/computer-organization-and-design-risc-v-edition/patterson/978-0-12-812275-4)*
-
-This is the model followed for **RISCV-v2**, with a few differences from the textbook diagram. The previous iteration (v1) lacked multi-stage pipelining, hazard detection, and any tangible way to interface with peripheral devices; instructions had to be pre-loaded and synthesized as BRAM, making the design extremely unmodular and prone to data hazards.
-
-This iteration adds a hazard detection unit to catch those hazards, and aims to increase
-performance through multi-stage pipelining, forwarding/branch units, and (in the simulation model) two separate L1 caches for instructions and data.
+Each phase has its own detailed README documenting dependencies, outputs, and how to reproduce results. Start with **1-rtl/** for the core design, then follow the dependency chain: 2-sim → 3-formal, or 2-sim → 4-sta.
 
 ---
 
@@ -62,17 +46,15 @@ performance through multi-stage pipelining, forwarding/branch units, and (in the
 
 For the I-cache and D-cache in this processor, I implemented a direct-mapped I-cache given its sequential access pattern, and a 2-way set-associative D-cache with an LRU replacement policy.
 
-**Simulation vs. hardware — why the caches aren't synthesized.** I built both caches specifically to understand how a memory hierarchy interacts with the pipeline: the miss stalls, the writeback and eviction paths, how a D-cache miss freezes the whole pipeline. 
-That's genuinely the point of having them here; it's an exercise in the mechanics of a real memory hierarchy.
+**Simulation vs. hardware — why the caches aren't synthesized.** I built both caches specifically to understand how a memory hierarchy interacts with the pipeline: the miss stalls, the writeback and eviction paths, how a D-cache miss freezes the whole pipeline. That's genuinely the point of having them here; it's an exercise in the mechanics of a real memory hierarchy.
 
-But taking the design through synthesis made the tradeoff clear: the **D-cache was the critical path.** Its read logic drove a ~1,900-fanout net that dominated timing, and Sky130 static timing traced a −54 ns setup violation straight to it. On top of that, a cache only pays off by hiding *slow* memory — my backing memory is on-chip and single-cycle, so there was nothing to hide. IPC measurements across a memory-latency sweep confirmed it: at single-cycle latency the cacheless core is actually *faster*, because the cache still pays refill overhead with no reuse to amortize.
+But taking the design through synthesis made the tradeoff clear: the **D-cache was the critical path.** Its read logic drove a ~1,949-fanout net that dominated timing, and Sky130 static timing traced a −54 ns setup violation straight to it. On top of that, a cache only pays off by hiding *slow* memory — my backing memory is on-chip and single-cycle, so there was nothing to hide. IPC measurements across a memory-latency sweep confirmed it: at single-cycle latency the cacheless core is actually *faster*, because the cache still pays refill overhead with no reuse to amortize.
 
-So the engineering decision was to make the **synthesizable design cacheless** — tightly-coupled memory wired straight to the core, the way a real bare-metal MCU works — while the cached version stays in simulation as the educational artifact it was built to be. Full timing + IPC analysis is in [`timing_analysis/`](timing_analysis/).
+So the engineering decision was to make the **synthesizable design cacheless** — tightly-coupled memory wired straight to the core, the way a real bare-metal MCU works — while the cached version stays in simulation as the educational artifact it was built to be. Full timing + IPC analysis is in [`4-sta/`](4-sta/).
 
 ### Processor Architecture
 
-Much like the old processor, but with instruction memory and data memory moved outside the
-processor itself, so the core only encapsulates:
+Much like the old processor, but with instruction memory and data memory moved outside the processor itself, so the core only encapsulates:
 
 - Program Counter
 - Register File
@@ -84,8 +66,7 @@ processor itself, so the core only encapsulates:
 - Immediate Generator
 - Pipelining Registers
 
-RTL source and the full-CPU testbenches both live under `verification/verilog_simulations/` — module-level testbenches aren't kept separately there; that folder's testbench targets the whole CPU, not individual units. Individual-module correctness
-is instead handled formally, under `verification/formal_verification/`.
+RTL source lives under [`1-rtl/`](1-rtl/). Full-CPU testbenches and IPC instrumentation live under [`2-sim/`](2-sim/). Module-level correctness is handled formally in [`3-formal/`](3-formal/).
 
 ---
 
@@ -93,16 +74,10 @@ is instead handled formally, under `verification/formal_verification/`.
 
 Two complementary strategies, not one:
 
-- **[`verification/formal_verification/`](verification/formal_verification/README.md)** — formal
-  proofs (SymbiYosys + BMC) for individual modules where the input space is large but the logic is
-  tractable enough to prove exhaustively. Includes the ALU (`core_formal/alu`, complete, with a
-  documented case study of distinguishing a real RTL bug from a Yosys tooling artifact); the
-  Wishbone bus wrappers are in progress alongside the interconnect itself.
-- **[`verification/verilog_simulations/`](verification/verilog_simulations/README.md)** —
-  Icarus Verilog testbenches for full-CPU, multi-cycle, program-level behavior that formal doesn't cover well (running real RISC-V programs, checking pipeline behavior over hundreds of cycles). This is also where the IPC instrumentation and the cache-vs-cacheless comparison live.
+- **[`3-formal/`](3-formal/)** — formal proofs (SymbiYosys + BMC) for individual modules where the input space is large but the logic is tractable enough to prove exhaustively. Includes the ALU (complete, with a documented case study of distinguishing a real RTL bug from a Yosys tooling artifact); the Wishbone bus wrappers are in progress alongside the interconnect itself.
+- **[`2-sim/`](2-sim/)** — Icarus Verilog testbenches for full-CPU, multi-cycle, program-level behavior that formal doesn't cover well (running real RISC-V programs, checking pipeline behavior over hundreds of cycles). This is also where the IPC instrumentation and the cache-vs-cacheless comparison live.
 
-Each folder's README explains why that approach was chosen for that scope, and how to reproduce the
-results.
+Each folder's README explains why that approach was chosen for that scope, and how to reproduce the results.
 
 ---
 
@@ -112,9 +87,9 @@ results.
 - [x] Split L1 I/D caches (direct-mapped I, 2-way set-associative D) — simulation model
 - [x] Cacheless hardware variant (caches removed after they proved to be the critical path)
 - [x] IPC / performance characterization (cache vs cacheless, across a memory-latency sweep)
-- [x] Bare-metal C toolchain (linker script, startup assembly, MMIO)
-- [x] Formal verification of individual modules (ALU complete)
-- [x] Static timing analysis — Sky130 synthesis (cached vs cacheless); PnR closure + FPGA next
+- [x] Bare-metal C toolchain (linker script, startup assembly, MMIO) — [`0-firmware/`](0-firmware/)
+- [x] Formal verification of individual modules (ALU complete) — [`3-formal/`](3-formal/)
+- [x] Static timing analysis — Sky130 synthesis (cached vs cacheless); post-synth STA closure at −10.22 ns WNS
 - [ ] Wishbone interconnect (master/slave wrappers) — in progress
 - [ ] UART + SPI peripherals
 - [ ] UART bootloader
@@ -126,11 +101,8 @@ results.
 
 ### Diagrams and Figures
 
-- **Harvard Architecture Overview**: Based on the classic 5-stage RISC pipeline diagram from
-  Patterson, D.A. and Hennessy, J.L. (2017).
-- **Cache Associativity Diagrams**:
-  [CS Illustrated](https://csillustrated.berkeley.edu/PDFs/handouts/cache-3-associativity-handout.pdf),
-  UC Berkeley EECS Department
+- **Harvard Architecture Overview**: Based on the classic 5-stage RISC pipeline diagram from Patterson, D.A. and Hennessy, J.L. (2017).
+- **Cache Associativity Diagrams**: [CS Illustrated](https://csillustrated.berkeley.edu/PDFs/handouts/cache-3-associativity-handout.pdf), UC Berkeley EECS Department
 
 ---
 
