@@ -1,10 +1,9 @@
 # Setting up Icarus Verilog for Fast Testbenching
 
-This folder simply has the infrastructure in how we are testbenching and validating the design of this `RISC-V v2 SoC` using Icarus Verilog before we use Vivado to synthesize and generate a working bitstream for an FPGA board. It's used for my own reference for rapid testbenching without relying on using Vivado on a VM. If you want detailed READMEs and testbench analysis on each individual component, check the `axi_mmio` and `core_riscv` folders for more information.
-
+This folder simply has the infrastructure in how we are testbenching and validating the design of this `RISC-V v2 SoC` using Icarus Verilog before we use Vivado to synthesize and generate a working bitstream for an FPGA board. It's used for my own reference for rapid testbenching without relying on using Vivado on a VM. 
 ## Why Simulation Here (Not Formal)
 
-This folder covers full-system and multi-cycle behavior — the core running real programs, AXI-Lite
+This folder covers full-system and multi-cycle behavior — the core running real programs, Wishbone
 transactions between modules, pipeline behavior over hundreds/thousands of cycles. Formal
 verification doesn't fit well at this scale for a few concrete reasons:
 
