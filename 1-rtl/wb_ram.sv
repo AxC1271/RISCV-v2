@@ -24,7 +24,7 @@ module wb_ram (
     logic valid_req;
     assign valid_req = wb_cycle & wb_strb;
 
-    // i decided to use a pipelined acknowledged request
+    // registered acknowledge signal
     logic ack_r;
     
     always_ff @(posedge clk or negedge rst_n) begin
