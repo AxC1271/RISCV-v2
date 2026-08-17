@@ -26,7 +26,7 @@ module wb_timer (
     // pipelined ack
     logic ack_r;
     
-    always_ff @(posedge clk or negedge rst_n) begin
+    always_ff @(posedge clk) begin
         if (!rst_n) begin
             ack_r <= 1'b0;
         end else begin
@@ -40,7 +40,7 @@ module wb_timer (
     logic timer_enable;
     logic [31:0] counter;
 
-    always_ff @(posedge clk or negedge rst_n) begin
+    always_ff @(posedge clk) begin
         if (!rst_n) begin
             timer_enable <= 1'b0;
             counter      <= 32'h0000_0000;

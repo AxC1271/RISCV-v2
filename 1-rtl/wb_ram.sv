@@ -13,11 +13,10 @@ module wb_ram (
     output logic        wb_ack
 );
 
-    // 4096 words (16 kB / 4 bytes per word)
     logic [31:0] ram [0:4095];
 
     // lower 14 bits of address gives word address (0–4095)
-    logic [13:0] addr_word;
+    logic [11:0] addr_word;
     assign addr_word = wb_addr[15:2];
 
     // valid request: cycle high, strobe high
@@ -27,7 +26,7 @@ module wb_ram (
     // registered acknowledge signal
     logic ack_r;
     
-    always_ff @(posedge clk or negedge rst_n) begin
+    always_ff @(posedge clk) begin
         if (!rst_n) begin
             ack_r <= 1'b0;
         end else begin
@@ -38,7 +37,7 @@ module wb_ram (
     assign wb_ack = ack_r;
 
     // synchronous read: latch address, read on next cycle
-    logic [13:0] addr_r;
+    logic [11:0] addr_r;
     
     always_ff @(posedge clk) begin
         if (valid_req) begin
@@ -49,7 +48,6 @@ module wb_ram (
     // data out from latched address
     assign wb_dat_r = ram[addr_r];
 
-    // write with byte enables
     always_ff @(posedge clk) begin
         if (valid_req && wb_we) begin
             if (wb_sel[3]) ram[addr_word][31:24] <= wb_dat_w[31:24];
@@ -59,13 +57,10 @@ module wb_ram (
         end
     end
 
-    // optional: initialize RAM to zero on reset
     integer i;
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            for (i = 0; i < 4096; i++) begin
-                ram[i] <= 32'h0000_0000;
-            end
+    initial begin
+        for (int i = 0; i < 4096; i++) begin
+            ram[i] = 32'h0000_0000;
         end
     end
 

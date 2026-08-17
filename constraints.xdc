@@ -1,12 +1,9 @@
 set_property PACKAGE_PIN W5 [get_ports clk]
 set_property IOSTANDARD LVCMOS33 [get_ports clk]
-create_clock -period 10.0 -name sys_clk -waveform {0.0 5.0} [get_ports clk]
+create_clock -period 10.41 -name sys_clk -waveform {0.0 5.0} [get_ports clk]
 
 set_property PACKAGE_PIN U18 [get_ports rst_n]
 set_property IOSTANDARD LVCMOS33 [get_ports rst_n]
-
-set_property PACKAGE_PIN A18 [get_ports usb_uart_tx]
-set_property IOSTANDARD LVCMOS33 [get_ports usb_uart_tx]
 
 set_property PACKAGE_PIN B18 [get_ports usb_uart_rx]
 set_property IOSTANDARD LVCMOS33 [get_ports usb_uart_rx]
@@ -106,3 +103,15 @@ set_property IOSTANDARD LVCMOS33 [get_ports {sw[14]}]
 
 set_property PACKAGE_PIN R2 [get_ports {sw[15]}]
 set_property IOSTANDARD LVCMOS33 [get_ports {sw[15]}]
+
+set_property PACKAGE_PIN C17 [get_ports {pmod_out[0]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {pmod_out[0]}]
+
+set_property PACKAGE_PIN D18 [get_ports {pmod_out[1]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {pmod_out[1]}]
+
+set_property PACKAGE_PIN E18 [get_ports pmod_uart_tx]
+set_property IOSTANDARD LVCMOS33 [get_ports pmod_uart_tx]
+
+set_property PACKAGE_PIN G17 [get_ports pmod_uart_rx]
+set_property IOSTANDARD LVCMOS33 [get_ports pmod_uart_rx]
