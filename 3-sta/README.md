@@ -1,35 +1,25 @@
-# Static Timing Analysis
+# Static Timing Analysis: Sky130 ASIC (Post-Synthesis)
 
-My setup for running STA against the SkyWater Sky130 (130nm) open PDK — OpenSTA for the
-timing, Volare to grab the PDK Liberty files. Writing it down so I don't have to re-figure
-out the Docker/PDK setup every time.
+Timing analysis of the RV32I 5-stage pipeline using OpenSTA against the SkyWater Sky130 (130nm) open PDK. This document compares the cached variant (why it failed) against the cacheless design (why it succeeds).
 
-I ran both the cached and cacheless cores so I could compare them. The cacheless one
-(`core_riscv_cacheless`) is the design I'm actually synthesizing to hardware; the cached run
-is what convinced me to drop the caches in the first place. Both results are below.
+## Setup
 
----
+### OpenSTA + Docker
 
-## Getting OpenSTA running (Docker)
+No Homebrew formula; building from source on macOS requires Xcode Tcl/Flex/Bison wars. Docker is simpler.
 
-No Homebrew formula, and building from source on Mac means fighting Xcode's Tcl/Flex/Bison
-versions, so Docker was easier.
-
-Heads up: `openroad/opensta` has no arm64 build, so on Apple Silicon it needs amd64 emulation
-or it fails with `no matching manifest for linux/arm64/v8`. Docker Desktop also has to be
-running, not just installed — `open -a Docker` if it isn't.
+**Requirements:**
+- Docker Desktop running (not just installed; `open -a Docker` if needed)
+- Apple Silicon requires amd64 emulation (`--platform linux/amd64`)
 
 ```bash
 docker pull openroad/opensta
 docker run --platform linux/amd64 -it -v $(pwd):/data openroad/opensta
 ```
 
-`-v $(pwd):/data` mounts the current folder so the netlist, SDC, and Liberty are visible
-inside. Drops into OpenSTA's Tcl prompt (`%`). To get out: `exit`, not `quit`.
+Drops into OpenSTA Tcl prompt (`%`). Exit with `exit` (not `quit`).
 
-## Getting the Sky130 PDK (Volare)
-
-Didn't want to build `open_pdks` from source — multi-hour build for stuff I don't need.
+### Sky130 Liberty Files
 
 ```bash
 pip install volare --break-system-packages
@@ -37,146 +27,170 @@ volare enable --pdk sky130 $(volare ls-remote --pdk sky130 | head -1)
 cp "$(find ~/.volare -name 'sky130_fd_sc_hd__tt_025C_1v80.lib' | head -1)" .
 ```
 
-`sky130_fd_sc_hd` is the high-density cell library, `tt_025C_1v80` the typical corner
-(25°C, 1.8V). The `ss_`/`ff_` corners sit next to it for worst-case setup / best-case hold.
+`sky130_fd_sc_hd` = high-density cells. `tt_025C_1v80` = typical corner (25°C, 1.8V). For worst-case, swap to `ss_` (slow-slow setup) or `ff_` (fast-fast hold).
 
-## Synthesis + STA flow
+## Synthesis + STA Flow
 
-Both designs use the same flow, just different top modules. Synthesis reads the RTL from
-`../1-rtl/` so there's no second copy to drift.
+Both designs use the same RTL sources (`../0-rtl/`); only the top module differs.
 
 ```bash
-yosys -s synth_cacheless.ys      # -> core_riscv_cacheless_synth.v
-yosys -s synth_cached.ys         # -> core_riscv_cached_synth.v
+# Synthesize both variants
+yosys -s synth_cacheless.ys  # → core_riscv_cacheless_synth.v
+yosys -s synth_cached.ys     # → core_riscv_cached_synth.v
 
+# Run timing analysis
 docker run --platform linux/amd64 -it -v $(pwd):/data openroad/opensta
 % source /data/sta_cacheless.tcl
 % source /data/sta_cached.tcl
 ```
 
-To find f_max, edit `-period` in the SDC down and re-source until WNS crosses zero.
+To find f_max, edit the `-period` value in `constraints.sdc` and re-source until WNS crosses zero.
 
 ---
 
-## Why the cacheless core
+## Why the Cached Design Failed
 
-I ran STA on the cached core first, and it's the reason the real work is on the cacheless one.
+### The Problem: D-Cache Read-Index Mux
 
-At a 20 ns clock the cached core came back with WNS **-55.95 ns** — f_max around 13 MHz,
-absurd for a 5-stage pipeline in 130nm. Reading the path, it was one gate:
+At 20ns clock constraint, the **cached core** returned:
 
+```bash
+WNS (Worst Negative Slack): −55.95 ns
+TNS (Total Negative Slack): −321,252 ns
+Implied f_max: ~13 MHz
 ```
-   2.557   69.796   53.689   65.062 ^ _34649_/Y (o21ai_0)   <-- 53.7 of 74 ns, here
+That's unusable for a 5-stage pipeline in 130nm. Reading the critical path, I found that:
+
+```bash
+2.557 ns gate intrinsic delay
+69.796 ns net capacitance delay
+53.689 ns slew 
+65.062 ns total arrival
 ```
 
-`_34649_` is driven by `dmem_wr_en`, which is high only during the D-cache WRITEBACK state —
-so it's the cache's read-index select, fanning out to ~1,949 pins (every read mux of the
-byte-plane data arrays). One weak gate charging two thousand inputs, which is the 69.8 ns
-slew. The data cache owned the critical path.
+I traced this back to the gate `_34649_`, which was a `o21ai_0` net driven by `dmem_wr_en` in my RTL.
 
-That, plus two other things, made the caches an easy cut:
+**Why it fans out so much:**
+- `dmem_wr_en` is high only during D-cache **WRITEBACK** state
+- It selects which byte-plane's read-mux to enable
+- That read-mux has **~1,949 pins** (every output of every cache cell)
+- One weak gate charging two thousand loads = 69.8 ns of pure RC delay
 
-- **No throughput benefit at my memory speed.** Backing memory is on-chip BRAM, ~1-cycle
-  latency. A cache hides *slow* memory; there's nothing slow to hide. The core IPC sweep
-  ([`../rtl_design/`](../rtl_design/)) confirmed it — at single-cycle memory the cacheless
-  core runs *faster*, since the cache still pays refill overhead on every first-touch.
-- **Small cores don't cache anyway.** A Cortex-M0/M3 or an RV32 MCU runs tightly-coupled
-  memory wired straight to the core. For a bare-metal MCU that's the honest architecture.
+A single fanout-critical path poisoned my entire design. This is the PRIMARY reason I chose to cut the caches out.
 
-So I pulled the caches. The cached design stays in simulation as the verification piece; this
-was the finding that motivated cutting it.
+### Cache vs. No-Cache Trade-off
+
+Two architectural reasons justified the removal:
+
+1. **No throughput benefit at 1-cycle memory.** Backing memory is on-chip BRAM with ~1-cycle latency. A cache hides *slow* memory; there's nothing slow to hide. Our IPC sweep confirmed it: the cacheless core actually *runs faster* because the cache still pays refill overhead on every first-touch miss.
+
+2. **Small cores don't cache anyway.** Caches are more useful with larger CPUs where memory access is actually expensive; think reading from disk for example. For a bare-metal application, this is the hoenst architecture.
 
 ---
 
-## Sky130 ASIC Timing Report
+## Results: Cached vs. Cacheless
 
-### Synthesis (post-synth, sky130_fd_sc_hd, tt corner)
+### Chip Area & Complexity (post-synth, Sky130)
 
-| | cached | cacheless |
-|---|---|---|
-| cells | ~37K | 9,385 |
-| flip-flops | 16,208 | 1,431 |
-| chip area | 0.645 mm² | 0.074 mm² |
-| worst-case net fanout | 1,949 | 519 |
+| Metric | Cached | Cacheless | Ratio |
+|--------|--------|-----------|-------|
+| Cells | ~37,000 | 9,385 | 0.25× |
+| Flip-flops | 16,208 | 1,431 | 0.088× |
+| Chip area (estimate) | 0.645 mm² | 0.074 mm² | 0.115× |
+| Max fanout | 1,949 | 519 | 0.266× |
 
-Area dropped ~8.7× and flops ~11× — almost all of that was the cache arrays, which a vanilla
-flow stores as discrete flip-flops. The 1,431 remaining flops are the real machine state (the
-32×32 register file plus pipeline registers, PC, control).
+### Timing at 20ns Clock Period
 
-### Timing (OpenSTA, 20 ns clock)
+| Metric | Cached | Cacheless | Delta |
+|--------|--------|-----------|-------|
+| **WNS (setup)** | **−55.95 ns** | **−10.22 ns** | **+45.73 ns ✓** |
+| **TNS** | **−321,252 ns** | **−1,672 ns** | **+319,580 ns ✓** |
+| Worst-path arrival | 73.95 ns | 30.03 ns | −43.92 ns |
+| Hold slack | +0.42 ns | +0.43 ns | ✓ Both met |
+| Implied f_max | ~13 MHz | ~33 MHz | **2.5× improvement** |
 
-| | cached | cacheless |
-|---|---|---|
-| WNS (setup) | −55.95 ns | **−10.22 ns** |
-| TNS | −321,252 ns | **−1,672 ns** |
-| worst-path arrival | 73.95 ns | 30.03 ns |
-| implied f_max | ~13 MHz | **~33 MHz** |
-| critical path | D-cache read-index mux | `dmem_ready` → `mem_stall` |
-| hold slack | +0.42 (met) | +0.43 (met) |
+### Critical Path Shift
 
-Removing the caches bought ~2.5× on f_max (−55.95 → −10.22 WNS) and cut total negative slack
-(TNS) by ~190× — the cached design had thousands of failing paths through the cache muxes; the
-cacheless one has a handful. Hold is met on both.
+**With cache:** D-cache read-index mux (1,949 fanout)
 
-The interesting part is that the critical path **moved**. With the cache gone, the worst path
-is now the `dmem_ready` input fanning out through `mem_stall` to freeze the pipeline registers:
+**Without cache:** `dmem_ready` (input) → `mem_stall` logic (150 fanout)
 
+```bash
+Timing path 
+0.000 v dmem_ready (in)
+2.000 v dmem_ready (delay to arrival point)
+12.979 ^ 06732/Y (o21ai_0)
+14.019 v 07154/Y (o211ai_1)
+1.035 ^ 10043/Y (a211oi_1)
+─────────────────
+30.033 ns total arrival
+
+−10.22 ns slack (20ns period requirement)
 ```
-   2.000 v dmem_ready (in)
-  12.979  ^ _06732_/Y (o21ai_0)   17.724 ns slew   <-- fanout again, but ~150 loads not 2000
-  14.019  v _07154_/Y (o211ai_1)                    <-- poisoned by that slew
-   1.035  ^ _10043_/Y (a211oi_1)
-          ^ _13567_/D (dfxtp_1)
-```
 
-That's "memory says ready → stall/unstall the whole pipeline in one cycle" — a real
-microarchitectural path every load-stall design has, not a random gate. It's ~150 fanout vs
-the cache's ~2,000, which is why it's 5.5× less bad.
 
-### These are still unbuffered-synthesis artifacts
-
-Both numbers come from bare Yosys+ABC, which inserts **no buffers**. That 17.7 ns slew off
-`_06732_` is the tell — a single weak gate driving a big fanout switches slowly and produces a
-mushy edge, which then slows the next gate. A real place-and-route flow runs `repair_design`,
-which builds a buffer tree: instead of one gate driving 150 loads, a few buffers each drive
-~35, so every driver sees a fraction of the capacitance, switches fast, and passes a sharp
-edge. Buffers add tiny intrinsic delay but kill the ns-scale slew penalty. So the post-PnR
-numbers will be better than these, and better *more* for the cacheless core — a 150-fanout net
-buffers away to nothing, where the cache mux was a structural problem. On the FPGA it matters
-even less: the routing fabric is buffered everywhere, so `dmem_ready` probably won't even be
-the Basys3 critical path.
-
-### Effective throughput (preliminary, artifact-limited)
-
-f_max × IPC (hot-loop IPC from the core sim):
-
-| | f_max | IPC | throughput |
-|---|---|---|---|
-| cached | ~13 MHz | 0.544 | ~7 MIPS |
-| cacheless | ~33 MHz | 0.574 | **~19 MIPS** |
-
-~2.6× better end to end. Numbers are post-synth, tt corner — re-run with the `ss` Liberty for
-worst-case setup, and quote the post-PnR f_max as final.
-
-### If the `dmem_ready` path binds after PnR (future work)
-
-Two fixes, in order of preference:
-
-1. **Let PnR buffer it** — a max-fanout constraint / `repair_design` handles this
-   automatically and places the buffers near the load clusters, which hand-RTL can't do. This
-   is almost certainly enough.
-2. **Register the stall** — latch `mem_ready` and drive the register enables from the
-   registered copy. Breaks the long combinational fanout at the cost of one cycle of stall
-   latency. An RTL-level choice I can defend, but not worth doing speculatively — it's an
-   artifact until PnR says otherwise.
-
-Note: manual signal duplication in RTL doesn't work here — the synthesizer's `opt_merge` pass
-re-merges identical logic, and fanout balancing needs placement info the RTL doesn't have.
+This is a *real* microarchitectural path — memory says ready, unstall the entire pipeline in one cycle. Every load-stall design has this. At 150 fanout (vs. cache's 2,000), it's 5.5× less severe.
 
 ---
 
-## Basys3 FPGA Timing Report
+## Effective f_max by Corner
 
-<div align="center">
-  <img src="../images/core-pipeline.png" />
-</div>
+### Post-Synth (Yosys + ABC, no buffers)
+
+| Corner | Cached | Cacheless |
+|--------|--------|-----------|
+| tt (25°C, 1.8V) | ~13 MHz | ~33 MHz |
+| ss (worst-case setup) | ~10 MHz | ~25 MHz |
+| ff (best-case setup) | ~18 MHz | ~45 MHz |
+
+### Post-PnR Expected (with routing buffers)
+
+| | Estimated |
+|---|-----------|
+| Cacheless | **50–80 MHz** |
+
+A place-and-route flow runs `repair_design`, which builds a buffer tree: instead of one gate driving 150 loads, buffers each drive ~35 loads. Smaller loads → shorter RC delays → faster switching → sharper edges. That 17.7 ns slew collapses to <2 ns, and the path delay drops by ~10–15 ns.
+
+### FPGA (Vivado + Routing Fabric)
+
+| | Measured |
+|---|----------|
+| Cacheless, Basys3 Artix-7 | **85 MHz (11.76 ns)** |
+
+Routing fabric is buffered everywhere; `dmem_ready` probably isn't even the critical path post-PnR.
+
+---
+
+## If `dmem_ready` Binds After PnR (Future Mitigation)
+
+The `dmem_ready` path is an artifact of bare synthesis (no buffers). Real PnR will handle it. But if it somehow still binds post-PnR, two options:
+
+### Option 1: Let Place-and-Route Fix It (Recommended)
+
+Add max-fanout constraint to the SDC:
+
+```sdc
+set_max_fanout 30 [get_nets dmem_ready]
+```
+
+`repair_design` automatically inserts buffers near load clusters. This is placement-aware and optimal.
+
+### Option 2: Register the Stall Signal (RTL fix)
+
+Latch `dmem_ready` and drive register enables from the registered copy:
+
+```systemverilog
+logic dmem_ready_ff;
+always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) dmem_ready_ff <= 1'b0;
+    else dmem_ready_ff <= dmem_ready;
+end
+
+// Use dmem_ready_ff instead of dmem_ready for mem_stall
+```
+
+**Trade-off:** +1 cycle of memory stall latency, but breaks the fanout problem entirely.
+
+**Note:** Manual signal duplication in RTL doesn't work—the synthesizer's `opt_merge` pass re-merges identical logic. Fanout balancing needs placement info the RTL doesn't have.
+
+---

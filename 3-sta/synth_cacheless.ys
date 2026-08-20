@@ -1,19 +1,19 @@
-read_verilog -sv core_riscv_cacheless.sv
-read_verilog -sv program_counter.sv
-read_verilog -sv ifid_register.sv
-read_verilog -sv idex_register.sv
-read_verilog -sv exmem_register.sv
-read_verilog -sv memwb_register.sv
-read_verilog -sv control_unit.sv
-read_verilog -sv immediate_generator.sv
-read_verilog -sv register_file.sv
-read_verilog -sv alu.sv
-read_verilog -sv branch_unit.sv
-read_verilog -sv forward_unit.sv
-read_verilog -sv hazard_unit.sv
+read_verilog -sv ../0-rtl/core_riscv.sv
+read_verilog -sv ../0-rtl/program_counter.sv
+read_verilog -sv ../0-rtl/ifid_register.sv
+read_verilog -sv ../0-rtl/idex_register.sv
+read_verilog -sv ../0-rtl/exmem_register.sv
+read_verilog -sv ../0-rtl/memwb_register.sv
+read_verilog -sv ../0-rtl/control_unit.sv
+read_verilog -sv ../0-rtl/immediate_generator.sv
+read_verilog -sv ../0-rtl/register_file.sv
+read_verilog -sv ../0-rtl/alu.sv
+read_verilog -sv ../0-rtl/branch_unit.sv
+read_verilog -sv ../0-rtl/forward_unit.sv
+read_verilog -sv ../0-rtl/hazard_unit.sv
 
-hierarchy -check -top core_riscv_cacheless
-synth -top core_riscv_cacheless
+hierarchy -check -top core_riscv
+synth -top core_riscv
 flatten
 opt_clean
 dfflibmap -liberty sky130_fd_sc_hd__tt_025C_1v80.lib
