@@ -1,0 +1,52 @@
+# Synthesized Verilog (hide from GitHub stats)
+*_synth.v
+*_synthesis.v
+*.synth.v
+
+# Yosys outputs
+*.log
+yosys_*
+
+# Vivado artifacts
+*.bit
+*.bitstream
+*.hwh
+*.xsa
+vivado*.jou
+vivado*.log
+.Xil/
+*.xpr
+.ip_user_files/
+.gen_files/
+
+# Simulation artifacts
+*.vvp
+*.vcd
+*.gtkw
+a.out
+
+# STA/OpenSTA outputs
+*.rpt
+*.sdc
+*.def
+*.lef
+*.lib
+
+# Build directories
+build/
+obj/
+synth/
+sim/
+
+# OS artifacts
+.DS_Store
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
