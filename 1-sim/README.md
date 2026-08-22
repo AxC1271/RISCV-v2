@@ -2,16 +2,6 @@
 
 This folder contains the testbenching and validation infrastructure for the RV32I 5-stage pipelined processor before synthesis/FPGA bring-up. It's used for rapid iteration on pipeline behavior, hazard detection, forwarding logic, and performance characterization across diverse workloads — all without relying on Vivado or synthesizing to hardware.
 
-## Why Simulation Here (Not Formal)
-
-This folder covers full-system and multi-cycle behavior — the core running real programs, pipeline behavior over hundreds/thousands of cycles, and instruction retirement patterns. Formal verification doesn't fit well at this scale for a few concrete reasons:
-
-- **State space explosion.** Formal proves properties by exhaustively reasoning over all reachable states. A single ALU is provable in seconds; an entire pipelined core with register file and multiple in-flight instructions is not. BMC either times out or needs so many hand-written invariants that it stops being faster than just simulating.
-- **The properties themselves get harder to state.** "Does `res` equal the ISA-defined result for this opcode" is a clean claim. "Does the whole core correctly execute this RISC-V program and produce the right register/memory state" requires decomposing into dozens of per-module invariants — which is exactly what `../2-formal/` is for.
-- **This is where you actually want to see behavior, not just prove a property.** Waveforms, instruction traces, IPC measurements, and performance data are the point of this folder. Formal doesn't produce that; it just says pass/fail on a stated property.
-
-**Rule of thumb:** Small combinational or shallow-sequential modules with large input spaces get formally verified in `../2-formal/`. Full-system, multi-cycle, or performance-oriented validation happens here in simulation.
-
 ---
 
 ## Testbenches & Workloads

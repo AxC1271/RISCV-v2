@@ -143,13 +143,6 @@ This is a *real* microarchitectural path — memory says ready, unstall the enti
 | ss (worst-case setup) | ~10 MHz | ~25 MHz |
 | ff (best-case setup) | ~18 MHz | ~45 MHz |
 
-### Post-PnR Expected (with routing buffers)
-
-| | Estimated |
-|---|-----------|
-| Cacheless | **50–80 MHz** |
-
-A place-and-route flow runs `repair_design`, which builds a buffer tree: instead of one gate driving 150 loads, buffers each drive ~35 loads. Smaller loads → shorter RC delays → faster switching → sharper edges. That 17.7 ns slew collapses to <2 ns, and the path delay drops by ~10–15 ns.
 
 ### FPGA (Vivado + Routing Fabric)
 

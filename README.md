@@ -1,6 +1,6 @@
 # RV32I 5-Stage Pipelined Processor
 
-A high-performance RISC-V embedded processor with hazard detection, data forwarding, and formal verification. Optimized for tight-coupled BRAM (MCU-style architecture, no caches).
+A high-performance RISC-V embedded processor with hazard detection and data forwarding. Optimized for tight-coupled BRAM (MCU-style architecture, no caches).
 
 ## At a Glance
 
@@ -10,7 +10,6 @@ A high-performance RISC-V embedded processor with hazard detection, data forward
 | **f_max (post-synth)** | **33 MHz** (Sky130 tt, no buffers) |
 | **IPC** | **0.64–0.76** (Fibonacci, Matrix, Bubble Sort) |
 | **Area** | **0.074 mm²** (Sky130 estimate, cacheless) |
-| **Formal proofs** | Clean on ALU, hazard, branch, regfile |
 
 ---
 
@@ -55,17 +54,6 @@ A high-performance RISC-V embedded processor with hazard detection, data forward
 
 ## Verification & Quality
 
-### Formal Proofs (SymbiYosys)
-
-Clean BMC (bounded model checking) passes on:
-
-- **ALU:** All arithmetic/logic opcodes (add, sub, and, or, sll, srl, sra, slt, sltu)
-- **Hazard Unit:** Forwarding mux single-assignment, load-use blocking
-- **Branch Logic:** Correct flush on misprediction, PC recovery
-- **Register File:** No WAR/WAW hazards in concurrent R/W
-
----
-
 ### Simulation Testbenches
 
 Three workload-specific benches + IPC instrumentation:
@@ -91,8 +79,6 @@ The simulations are also already provided, but you can edit the testbench files 
 - **Area:** ~0.074 mm² (Sky130 estimate)
 - **Critical path:** `dmem_ready` → `mem_stall` (150 fanout, 17.7 ns slew)
 
-Expected post-PnR: **50–80 MHz** (buffer insertion fixes fanout)
-
 ---
 
 ### FPGA (Vivado, Basys3 Artix-7)
@@ -100,7 +86,6 @@ Expected post-PnR: **50–80 MHz** (buffer insertion fixes fanout)
 - **Device:** xc7a35tcpg236
 - **Frequency:** **85 MHz** (11.76 ns critical path)
 - **Timing:** Met with positive slack
-- **Status:** Functional (bootloader receive circuit issue unresolved; simulation verified)
 
 ---
 
