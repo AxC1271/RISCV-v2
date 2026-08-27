@@ -84,7 +84,7 @@ Two architectural reasons justified the removal:
 
 1. **No throughput benefit at 1-cycle memory.** Backing memory is on-chip BRAM with ~1-cycle latency. A cache hides *slow* memory; there's nothing slow to hide. Our IPC sweep confirmed it: the cacheless core actually *runs faster* because the cache still pays refill overhead on every first-touch miss.
 
-2. **Small cores don't cache anyway.** Caches are more useful with larger CPUs where memory access is actually expensive; think reading from disk for example. For a bare-metal application, this is the hoenst architecture.
+2. **Small cores don't cache anyway.** Caches are more useful with larger CPUs where memory access is actually expensive; think reading from disk for example. For a bare-metal application, this is the honest architecture.
 
 ---
 
