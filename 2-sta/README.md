@@ -1,6 +1,6 @@
 # Static Timing Analysis: Sky130 ASIC (Post-Synthesis)
 
-Timing analysis of the RV32I 5-stage pipeline using OpenSTA against the SkyWater Sky130 (130nm) open PDK. This document compares the cached variant (why it failed) against the cacheless design (why it succeeds).
+Timing analysis of the RV32I 5-stage pipeline using OpenSTA against the SkyWater Sky130 (130nm) open PDK. This document characterizes the timing bottlenecks of the standard-cell synthesized cached variant against the signed-off cacheless core.
 
 ## Setup
 
@@ -48,35 +48,34 @@ To find f_max, edit the `-period` value in `constraints.sdc` and re-source until
 
 ---
 
-## Why the Cached Design Failed
+## Analysis: Standard-Cell Caches vs. Core Signoff
 
-### The Problem: D-Cache Read-Index Mux
+### The Bottleneck with Synthesized Standard-Cell Caches
 
-At 20ns clock constraint, the **cached core** returned:
+When synthesizing the multi-kilobyte cache arrays directly into standard cells (without compiled SRAM macros), OpenSTA reported severe setup violations:
 
 ```bash
-WNS (Worst Negative Slack): −55.95 ns
-TNS (Total Negative Slack): −321,252 ns
-Implied f_max: ~13 MHz
+Clock Period: 17.00 ns
+WNS (Worst Negative Slack): -77.65 ns
+TNS (Total Negative Slack): -3,777,731.00 ns
+Data Arrival Time:          94.18 ns
+Achievable f_max:          ~10.5 MHz
 ```
 That's unusable for a 5-stage pipeline in 130nm. Reading the critical path, I found that:
 
 ```bash
-2.557 ns gate intrinsic delay
-69.796 ns net capacitance delay
-53.689 ns slew 
-65.062 ns total arrival
+Pin / Net                   Cap (pF)    Slew (ns)   Delay (ns)   Time (ns)
+---------------------------------------------------------------------------
+pc_reg/_132_/Q (dfxtp_1)    11.875      109.095     76.764       76.764
+icache/_15714_/X (mux4_2)    0.002        2.787     11.792       88.556
+...
+pc_reg/_132_/D (dfxtp_1)     0.002        1.151      0.000       94.178
 ```
 
-I traced this back to the gate `_34649_`, which was a `o21ai_0` net driven by `dmem_wr_en` in my RTL.
+**Why Standard-Cell Caches Degraded Timing:**
+- Yosys synthesizes both caches (I-cache which was 1 kB and D-cache which was 4 kB) into pure flip-flops instead of dedicated SRAM hard macros.
 
-**Why it fans out so much:**
-- `dmem_wr_en` is high only during D-cache **WRITEBACK** state
-- It selects which byte-plane's read-mux to enable
-- That read-mux has **~1,949 pins** (every output of every cache cell)
-- One weak gate charging two thousand loads = 69.8 ns of pure RC delay
-
-A single fanout-critical path poisoned my entire design. This is the PRIMARY reason I chose to cut the caches out.
+- Synthesizing the tag and data stores into standard cells mapped the memory into $>120,000$ flip-flops and combinational multiplexer trees.
 
 ### Cache vs. No-Cache Trade-off
 
@@ -84,7 +83,9 @@ Two architectural reasons justified the removal:
 
 1. **No throughput benefit at 1-cycle memory.** Backing memory is on-chip BRAM with ~1-cycle latency. A cache hides *slow* memory; there's nothing slow to hide. Our IPC sweep confirmed it: the cacheless core actually *runs faster* because the cache still pays refill overhead on every first-touch miss.
 
-2. **Small cores don't cache anyway.** Caches are more useful with larger CPUs where memory access is actually expensive; think reading from disk for example. For a bare-metal application, this is the honest architecture.
+2. **Small cores don't cache anyway.** Caches are more useful with larger CPUs where memory access is actually expensive; think reading from disk for example. For a bare-metal application, this is the honest architecture. My original intention was to port this to an FPGA, where BRAM latency is deterministic.
+
+You could argue that I could've found a way to optimize timing, find the SRAM macros, redone the analysis, and achieved a much higher analysis. For my scope, I felt it was a rational engineering choice to remove them, save on area and power (especially considering the original application, the extra hardware usage provides little to no benefit), and keep the design simpler.
 
 ---
 
@@ -94,55 +95,42 @@ Two architectural reasons justified the removal:
 
 | Metric | Cached | Cacheless | Ratio |
 |--------|--------|-----------|-------|
-| Cells | ~37,000 | 9,385 | 0.25× |
-| Flip-flops | 16,208 | 1,431 | 0.088× |
-| Chip area (estimate) | 0.645 mm² | 0.074 mm² | 0.115× |
-| Max fanout | 1,949 | 519 | 0.266× |
+| Logic Cells | ~37,000 | 9,385 | 0.25× |
+| Flip-flops | >120,000 | 1,431 | 0.012× |
+| Chip area (estimate) | 1.975 mm² | 0.0793 mm² | 0.04× |
+| Max Slew | 109.1 ns | 10.53ns | 0.096× |
 
-### Timing at 20ns Clock Period
+### Timing at 17ns Clock Period
 
 | Metric | Cached | Cacheless | Delta |
 |--------|--------|-----------|-------|
-| **WNS (setup)** | **−55.95 ns** | **−10.22 ns** | **+45.73 ns ✓** |
-| **TNS** | **−321,252 ns** | **−1,672 ns** | **+319,580 ns ✓** |
-| Worst-path arrival | 73.95 ns | 30.03 ns | −43.92 ns |
-| Hold slack | +0.42 ns | +0.43 ns | ✓ Both met |
-| Implied f_max | ~13 MHz | ~33 MHz | **2.5× improvement** |
+| **WNS (setup)** | **−77.65 ns** | **+0.55 ns** | **+78.20 ns ✓** |
+| **TNS** | **−3,777,731 ns** | **0.00 ns** | **Clean Closure ✓** |
+| Worst-path arrival | 94.18 ns | 15.91 ns | −78.27 ns |
+| Hold slack | +0.17 ns | +0.43 ns | ✓ Both met |
+| Implied f_max | ~10.5 MHz | ~58.8 MHz | **5.6× improvement** |
 
 ### Critical Path Shift
 
-**With cache:** D-cache read-index mux (1,949 fanout)
+**With cache:** Program counter fanout to synthesized I-cache word-line read multiplexers ($11.875\text{ pF}$ load, $109.1\text{ ns}$ slew).
 
-**Without cache:** `dmem_ready` (input) → `mem_stall` logic (150 fanout)
+**Without cache:** External dmem_ready input distributing through hazard stall logic (hu) across pipeline registers:
 
 ```bash
-Timing path 
-0.000 v dmem_ready (in)
-2.000 v dmem_ready (delay to arrival point)
-12.979 ^ 06732/Y (o21ai_0)
-14.019 v 07154/Y (o211ai_1)
-1.035 ^ 10043/Y (a211oi_1)
-─────────────────
-30.033 ns total arrival
-
-−10.22 ns slack (20ns period requirement)
+Pin / Net                         Cap (pF)   Slew (ns)   Delay (ns)   Time (ns)
+-------------------------------------------------------------------------------
+dmem_ready (input port)           0.001      0.022       2.007        2.007
+hu/_28_/Y (nand2b_1)              0.011      0.123       0.138        2.146
+hu/_30_/Y (nand2_1)               1.535     10.532       7.867       10.012
+hu/_49_/Y (a21oi_1)               0.004      1.495       2.397       12.409
+idex/_385_/Y (nand2b_1)           0.464      4.577       3.413       15.822
+idex/_763_/Y (nor2_1)             0.002      0.433       0.087       15.909
+idex/_768_/D (dfxtp_1)            -          -           0.000       15.909
 ```
 
-
-This is a *real* microarchitectural path — memory says ready, unstall the entire pipeline in one cycle. Every load-stall design has this. At 150 fanout (vs. cache's 2,000), it's 5.5× less severe.
+This is an expected pre-layout path: gate hu/_30_ drives a global pipeline stall line with high unbuffered fanout ($1.535\text{ pF}$), which is easily resolved by buffer tree insertion during physical placement.
 
 ---
-
-## Effective f_max by Corner
-
-### Post-Synth (Yosys + ABC, no buffers)
-
-| Corner | Cached | Cacheless |
-|--------|--------|-----------|
-| tt (25°C, 1.8V) | ~13 MHz | ~33 MHz |
-| ss (worst-case setup) | ~10 MHz | ~25 MHz |
-| ff (best-case setup) | ~18 MHz | ~45 MHz |
-
 
 ### FPGA (Vivado + Routing Fabric)
 
@@ -151,39 +139,5 @@ This is a *real* microarchitectural path — memory says ready, unstall the enti
 | Cacheless, Basys3 Artix-7 | **85 MHz (11.76 ns)** |
 
 Routing fabric is buffered everywhere; `dmem_ready` probably isn't even the critical path post-PnR.
-
----
-
-## If `dmem_ready` Binds After PnR (Future Mitigation)
-
-The `dmem_ready` path is an artifact of bare synthesis (no buffers). Real PnR will handle it. But if it somehow still binds post-PnR, two options:
-
-### Option 1: Let Place-and-Route Fix It (Recommended)
-
-Add max-fanout constraint to the SDC:
-
-```sdc
-set_max_fanout 30 [get_nets dmem_ready]
-```
-
-`repair_design` automatically inserts buffers near load clusters. This is placement-aware and optimal.
-
-### Option 2: Register the Stall Signal (RTL fix)
-
-Latch `dmem_ready` and drive register enables from the registered copy:
-
-```systemverilog
-logic dmem_ready_ff;
-always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n) dmem_ready_ff <= 1'b0;
-    else dmem_ready_ff <= dmem_ready;
-end
-
-// Use dmem_ready_ff instead of dmem_ready for mem_stall
-```
-
-**Trade-off:** +1 cycle of memory stall latency, but breaks the fanout problem entirely.
-
-**Note:** Manual signal duplication in RTL doesn't work—the synthesizer's `opt_merge` pass re-merges identical logic. Fanout balancing needs placement info the RTL doesn't have.
 
 ---
