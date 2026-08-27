@@ -27,7 +27,7 @@ module core_riscv_tb();
     logic [31:0] debug_reg_data;
     logic        debug_halted;
 
-    core_riscv #(.RESET_VECTOR(BASE)) dut (
+    core_riscv_cached #(.RESET_VECTOR(BASE)) dut (
         .clk            (clk),
         .rst_n          (rst_n),
         .cpu_enable     (cpu_enable),

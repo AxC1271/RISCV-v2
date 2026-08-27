@@ -1,6 +1,6 @@
 // 5-stage in-order RV32I core with Integrated I-Cache and D-Cache
 // IF -> ID -> EX -> MEM -> WB
-module core_riscv # (
+module core_riscv_cached # (
     parameter logic [31:0] RESET_VECTOR = 32'h0000_0000
 )(
     input  logic clk,
