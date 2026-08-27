@@ -1,7 +1,7 @@
 // 5-stage in-order RV32I core, CACHELESS (Harvard, tightly-coupled memory).
 // IF -> ID -> EX -> MEM -> WB
 // fetch and data go straight to memory
-module core_riscv_pipeline # (
+module core_riscv # (
     parameter logic [31:0] RESET_VECTOR = 32'h0000_0000
 )(
     input  logic clk,
